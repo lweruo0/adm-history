@@ -62,14 +62,19 @@ final class MembershipChanger
             // optionale Beitragsrollen der neuen Mitgliedsart bleiben, wie sie sind;
             // alle übrigen Mitgliedsart- und Beitragsrollen enden
             $targetRoleIds = $this->loader->getRoleIds(array_merge($newType->roleNames, $this->config->getCommonRoles(), $newType->mandatoryFeeRoles));
-            $keepRoleIds = array_merge($targetRoleIds, $this->loader->getRoleIds($newType->optionalFeeRoles));
+            // einmalige Beitragsrollen werden nicht ins Wechseljahr übernommen, sie enden am Vortag
+            $keepRoleIds = array_merge(
+                $targetRoleIds,
+                array_diff($this->loader->getRoleIds($newType->optionalFeeRoles), $this->loader->getOneTimeFeeRoleIds())
+            );
             $stopRoleIds = array_values(array_diff(
                 array_merge($this->loader->getTypeRoleIds(), $this->loader->getFeeRoleIds()),
                 $keepRoleIds
             ));
         }
 
-        $operations = $this->planner->plan($user['memberships'], $stopRoleIds, $targetRoleIds, $effectiveDate);
+        $existing = $this->withoutUntouchedOneTimeFees($user['memberships'], $targetRoleIds, $effectiveDate);
+        $operations = $this->planner->plan($existing, $stopRoleIds, $targetRoleIds, $effectiveDate);
         if ($operations === []) {
             return 0;
         }
@@ -89,6 +94,30 @@ final class MembershipChanger
         }
 
         return count($operations);
+    }
+
+    /**
+     * Lässt Mitgliedschaften in einmaligen Beitragsrollen, die erst an oder nach dem Stichtag
+     * beginnen, unangetastet (der Beitrag gilt nur in seinem Jahr und wird weder beendet noch
+     * gelöscht). Ausgenommen sind Rollen, die ab dem Stichtag gelten sollen, damit der Planer keine
+     * doppelte Mitgliedschaft anlegt.
+     *
+     * @param array<int, array{mem_id:int, rol_id:int, begin:string, end:string}> $memberships
+     * @param int[] $targetRoleIds
+     * @return array<int, array{mem_id:int, rol_id:int, begin:string, end:string}>
+     */
+    private function withoutUntouchedOneTimeFees(array $memberships, array $targetRoleIds, string $effectiveDate): array
+    {
+        $oneTimeRoleIds = array_diff($this->loader->getOneTimeFeeRoleIds(), $targetRoleIds);
+        if ($oneTimeRoleIds === []) {
+            return $memberships;
+        }
+
+        return array_values(array_filter(
+            $memberships,
+            static fn(array $membership): bool =>
+                !in_array($membership['rol_id'], $oneTimeRoleIds, true) || $membership['begin'] < $effectiveDate
+        ));
     }
 
     /**

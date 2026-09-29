@@ -60,7 +60,9 @@ return [
     // Optionale Beitragsrollen (Zusatzbeiträge) je Mitgliedsart: sie werden beim Wechsel nicht
     // begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie
     // am 31. Dezember des Vorjahres. Für das aktuelle Jahr und das Folgejahr werden sie in der
-    // Spalte „Zusatz“ angezeigt. Eine Rolle darf bei mehreren Mitgliedsarten stehen.
+    // Spalte „Zusatz“ angezeigt. Rollen mit Beitragszeitraum „einmalig“ (Rolleneinstellung in
+    // Admidio) zählen nur im Jahr ihres Beginns und werden beim Wechsel nicht ins Folgejahr
+    // übernommen. Eine Rolle darf bei mehreren Mitgliedsarten stehen.
     'optionalFeeRoles' => [
         'A' => ['Bearbeitungsgebühr', 'Bootsbeitrag', 'Erstbesatz', 'passiv->aktiv Differenz'],
         'F' => ['Förderbeitrag 100€', 'Förderbeitrag 50€', 'Förderbeitrag 25€', 'Förderbeitrag 20€', 'Förderbeitrag 12€'],

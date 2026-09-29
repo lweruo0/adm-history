@@ -155,7 +155,7 @@ final class HistoryTableRenderer
             $headers .= '<th class="text-center adm-history-year"' . ($editable ? ' title="Änderbar: Mitgliedsart ab 01.01.' . $year . '"' : '') . '>'
                 . $year . ($editable ? ' <i class="bi bi-pencil-square small"></i>' : '') . '</th>';
             if ($showFees && in_array($year, $editableYears, true)) {
-                $headers .= '<th class="adm-history-year" title="Zusatzbeiträge ' . $year . ': optionale Beitragsrollen, in denen die Person im Jahr ist">'
+                $headers .= '<th class="adm-history-year" title="Zusatzbeiträge ' . $year . ': optionale Beitragsrollen, in denen die Person im Jahr ist (einmalige nur im Jahr des Beginns)">'
                     . 'Zusatz ' . $year . '</th>';
             }
         }

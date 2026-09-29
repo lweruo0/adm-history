@@ -83,6 +83,25 @@ final class YearHistory
     }
 
     /**
+     * Begrenzt einen Zeitraum auf das Kalenderjahr seines Beginns: Beitragsrollen mit
+     * Beitragszeitraum „einmalig“ gelten nur im Jahr, in dem die Mitgliedschaft beginnt, auch wenn
+     * sie in Admidio offen weiterläuft.
+     *
+     * @template T of array{begin:string, end:string}
+     * @param T $period
+     * @return T
+     */
+    public static function limitToBeginYear(array $period): array
+    {
+        $yearEnd = substr($period['begin'], 0, 4) . '-12-31';
+        if ($period['end'] > $yearEnd) {
+            $period['end'] = $yearEnd;
+        }
+
+        return $period;
+    }
+
+    /**
      * Rollen (z. B. optionale Beitragsrollen), in denen die Person im Jahr mindestens einen Tag war,
      * in der Reihenfolge des Beginns, ohne Doppelte.
      *

@@ -39,7 +39,7 @@ final class MembershipRepository
         }
         $keys = array_values(array_unique($wanted));
 
-        $sql = 'SELECT rol_id, rol_uuid, rol_name
+        $sql = 'SELECT rol_id, rol_uuid, rol_name, rol_cost_period
                   FROM ' . TBL_ROLES . '
             INNER JOIN ' . TBL_CATEGORIES . ' ON cat_id = rol_cat_id
                  WHERE cat_org_id = ? -- organizationId
@@ -47,7 +47,12 @@ final class MembershipRepository
                    AND LOWER(rol_name) IN (' . self::placeholders($keys) . ')';
         $byKey = [];
         foreach ($this->query($sql, array_merge([$this->context->organizationId], $keys)) as $row) {
-            $byKey[mb_strtolower(trim((string) $row['rol_name']))] = new RoleRef((int) $row['rol_id'], (string) $row['rol_uuid'], (string) $row['rol_name']);
+            $byKey[mb_strtolower(trim((string) $row['rol_name']))] = new RoleRef(
+                (int) $row['rol_id'],
+                (string) $row['rol_uuid'],
+                (string) $row['rol_name'],
+                (int) ($row['rol_cost_period'] ?? 0)
+            );
         }
 
         $found = [];

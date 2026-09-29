@@ -171,24 +171,44 @@ final class HistoryLoader
     public function toFeePeriods(array $memberships): array
     {
         $roles = $this->getRoles();
-        $nameByRoleId = [];
+        $roleById = [];
         foreach ($this->config->getOptionalFeeRoleNames() as $roleName) {
             if (isset($roles[$roleName])) {
-                $nameByRoleId[$roles[$roleName]->id] = $roleName;
+                $roleById[$roles[$roleName]->id] = ['name' => $roleName, 'role' => $roles[$roleName]];
             }
         }
 
         $periods = [];
         foreach ($memberships as $membership) {
-            if (isset($nameByRoleId[$membership['rol_id']])) {
-                $periods[] = [
-                    'role'  => $nameByRoleId[$membership['rol_id']],
-                    'begin' => $membership['begin'],
-                    'end'   => $membership['end'],
-                ];
+            if (!isset($roleById[$membership['rol_id']])) {
+                continue;
             }
+            $period = [
+                'role'  => $roleById[$membership['rol_id']]['name'],
+                'begin' => $membership['begin'],
+                'end'   => $membership['end'],
+            ];
+            // einmalige Beiträge zählen nur im Jahr des Beginns
+            if ($roleById[$membership['rol_id']]['role']->isOneTimeFee()) {
+                $period = YearHistory::limitToBeginYear($period);
+            }
+            $periods[] = $period;
         }
 
         return $periods;
+    }
+
+    /** @return int[] Rollen-IDs der Beitragsrollen mit Beitragszeitraum „einmalig“ */
+    public function getOneTimeFeeRoleIds(): array
+    {
+        $roles = $this->getRoles();
+        $ids = [];
+        foreach ($this->config->getAllFeeRoleNames() as $roleName) {
+            if (isset($roles[$roleName]) && $roles[$roleName]->isOneTimeFee()) {
+                $ids[] = $roles[$roleName]->id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 }

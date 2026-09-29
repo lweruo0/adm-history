@@ -127,6 +127,22 @@ final class YearHistoryTest extends TestCase
         self::assertSame([], $this->history->rolesInYear([], 2026));
     }
 
+    public function testLimitToBeginYearCutsOpenAndLaterEndsButKeepsEarlierEnds(): void
+    {
+        $open = ['role' => 'Erstbesatz', 'begin' => '2026-03-01', 'end' => '9999-12-31'];
+        $later = ['role' => 'Erstbesatz', 'begin' => '2026-03-01', 'end' => '2028-06-30'];
+        $within = ['role' => 'Erstbesatz', 'begin' => '2026-03-01', 'end' => '2026-09-30'];
+
+        self::assertSame('2026-12-31', YearHistory::limitToBeginYear($open)['end']);
+        self::assertSame('2026-12-31', YearHistory::limitToBeginYear($later)['end']);
+        self::assertSame($within, YearHistory::limitToBeginYear($within));
+
+        // einmaliger Beitrag erscheint nur im Jahr des Beginns
+        $periods = [YearHistory::limitToBeginYear($open)];
+        self::assertSame(['Erstbesatz'], $this->history->rolesInYear($periods, 2026));
+        self::assertSame([], $this->history->rolesInYear($periods, 2027));
+    }
+
     public function testIsMemberAtDateConsidersTypeAndCommonRoles(): void
     {
         $periods = [['type' => 'A', 'begin' => '2015-01-01', 'end' => '2020-06-30']];
