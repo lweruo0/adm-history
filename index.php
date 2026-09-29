@@ -110,13 +110,16 @@ try {
             // neuen Stand der änderbaren Jahre zurückgeben, damit die Anzeige ohne Neuladen stimmt
             $user = $loader->loadUser($postUserUuid) ?? $user;
             $years = [];
+            $fees = [];
             foreach ($editableYears as $year) {
                 $years[(string) $year] = $history->yearState($user['periods'], $year, $user['commonPeriods']);
+                $fees[(string) $year] = $history->rolesInYear($user['feePeriods'], $year);
             }
             admHistorySendJson([
                 'status'  => 'ok',
                 'message' => $operations === 0 ? 'Keine Änderung notwendig.' : 'Mitgliedsart gespeichert.',
                 'years'   => $years,
+                'fees'    => $fees,
             ]);
         } catch (Throwable $ex) {
             admHistorySendJson(['status' => 'error', 'message' => $ex->getMessage()]);

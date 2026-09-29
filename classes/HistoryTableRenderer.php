@@ -90,6 +90,7 @@ final class HistoryTableRenderer
             . '<div class="col-12 form-text">Je Jahr stehen alle Mitgliedsarten, in denen die Person in diesem Jahr mindestens einen Tag war. '
             . 'Für das aktuelle Jahr und das Folgejahr zeigt die Auswahl die Mitgliedsart am 31.12.; eine Änderung gilt ab dem 1. Januar '
             . 'des jeweiligen Jahres. „Aktive Kontakte“ sind heute in einer der konfigurierten Rollen, „Ehemalige Kontakte“ waren es früher. '
+            . 'Die Spalte „Zusatz“ zeigt die optionalen Beitragsrollen (Zusatzbeiträge) des Jahres. '
             . 'Personen ohne Mitgliedsart im angezeigten Zeitraum werden ausgeblendet.</div>'
             . '</form></div></div>';
 
@@ -116,6 +117,9 @@ final class HistoryTableRenderer
     {
         $e = Html::escape(...);
 
+        // Spalte „Zusatz“ (optionale Beitragsrollen) nur, wenn welche konfiguriert sind
+        $showFees = $this->config->getOptionalFeeRoleNames() !== [];
+
         $rows = [];
         foreach ($users as $user) {
             $cells = [];
@@ -124,10 +128,14 @@ final class HistoryTableRenderer
                 $state = $this->history->yearState($user['periods'], $year, $user['commonPeriods']);
                 $inYear = $this->history->typesInYear($user['periods'], $year);
                 $visible = $visible || $inYear !== [] || $state['unknown'];
-                if ($canEdit && in_array($year, $editableYears, true)) {
+                $editableYear = in_array($year, $editableYears, true);
+                if ($canEdit && $editableYear) {
                     $cells[] = $this->selectCell($user, $year, $state);
                 } else {
                     $cells[] = $this->historyCell($inYear, $state['unknown']);
+                }
+                if ($showFees && $editableYear) {
+                    $cells[] = $this->feeCell($user, $year, $this->history->rolesInYear($user['feePeriods'], $year));
                 }
             }
             if (!$visible) {
@@ -146,12 +154,19 @@ final class HistoryTableRenderer
             $editable = $canEdit && in_array($year, $editableYears, true);
             $headers .= '<th class="text-center adm-history-year"' . ($editable ? ' title="Änderbar: Mitgliedsart ab 01.01.' . $year . '"' : '') . '>'
                 . $year . ($editable ? ' <i class="bi bi-pencil-square small"></i>' : '') . '</th>';
+            if ($showFees && in_array($year, $editableYears, true)) {
+                $headers .= '<th class="adm-history-year" title="Zusatzbeiträge ' . $year . ': optionale Beitragsrollen, in denen die Person im Jahr ist">'
+                    . 'Zusatz ' . $year . '</th>';
+            }
         }
 
         $page->addHtml('<style>
             .adm-history-badge { display: inline-block; min-width: 1.7em; padding: 0 .3em; margin: 0 1px; border-radius: .25rem;
                 line-height: 1.3; text-align: center; font-weight: 600; color: #212529; border: 1px solid rgba(0,0,0,.15); }
             .adm-history-unknown { background-color: #e9ecef; color: #6c757d; }
+            .adm-history-fee { display: inline-block; padding: 0 .3em; margin: 0 1px; border-radius: .25rem; line-height: 1.3;
+                font-size: .85em; background-color: #f8f9fa; color: #212529; border: 1px solid rgba(0,0,0,.15); }
+            #' . self::TABLE_ID . ' td.adm-history-fees { text-align: left; }
             .adm-history-select { min-width: 4.5em; padding-top: 0; padding-bottom: 0; line-height: 1.3; font-weight: 600; }
             #' . self::TABLE_ID . ' td, #' . self::TABLE_ID . ' th { white-space: nowrap; padding: .1rem .4rem; line-height: 1.3; vertical-align: middle; }
             #' . self::TABLE_ID . ' td.adm-history-year { text-align: center; }
@@ -221,6 +236,30 @@ final class HistoryTableRenderer
                 . ($key === '' ? '–' : $e($key)) . '</option>';
         }
         $html .= '</select>' . $this->othersIcon($year, $state['others']) . ' ' . $this->unknownBadge(!$state['unknown']) . '</td>';
+
+        return $html;
+    }
+
+    /**
+     * Zelle „Zusatz“: optionale Beitragsrollen, in denen die Person im Jahr ist. Die Zelle trägt
+     * Person und Jahr als data-Attribute, damit das JavaScript sie nach einem Wechsel aktualisiert.
+     *
+     * @param array<string, mixed> $user
+     * @param string[]             $roleNames
+     */
+    private function feeCell(array $user, int $year, array $roleNames): string
+    {
+        return '<td class="adm-history-fees" data-user="' . Html::escape($user['usr_uuid']) . '" data-year="' . $year . '">'
+            . $this->feeBadges($roleNames) . '</td>';
+    }
+
+    /** @param string[] $roleNames */
+    private function feeBadges(array $roleNames): string
+    {
+        $html = '';
+        foreach ($roleNames as $roleName) {
+            $html .= '<span class="adm-history-fee">' . Html::escape($roleName) . '</span>';
+        }
 
         return $html;
     }
@@ -332,6 +371,17 @@ final class HistoryTableRenderer
                     select.dataset.locked = allowed.length === 0 ? "1" : "";
                 }
 
+                // Zelle „Zusatz“ mit den optionalen Beitragsrollen des Jahres neu füllen
+                function updateFees(cell, roleNames) {
+                    cell.innerHTML = "";
+                    roleNames.forEach(function (roleName) {
+                        var badge = document.createElement("span");
+                        badge.className = "adm-history-fee";
+                        badge.textContent = roleName;
+                        cell.appendChild(badge);
+                    });
+                }
+
                 function updateSelect(select, state) {
                     buildOptions(select, state.value);
                     select.value = state.value;
@@ -381,6 +431,12 @@ final class HistoryTableRenderer
                                 var other = table.querySelector(".adm-history-select[data-user=\"" + select.dataset.user + "\"][data-year=\"" + year + "\"]");
                                 if (other) {
                                     updateSelect(other, data.years[year]);
+                                }
+                            });
+                            Object.keys(data.fees || {}).forEach(function (year) {
+                                var cell = table.querySelector(".adm-history-fees[data-user=\"" + select.dataset.user + "\"][data-year=\"" + year + "\"]");
+                                if (cell) {
+                                    updateFees(cell, data.fees[year]);
                                 }
                             });
                         })

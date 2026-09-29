@@ -9,7 +9,9 @@ use Throwable;
 /**
  * Führt einen Wechsel der Mitgliedsart über die Admidio-Entities aus.
  *
- * Der Wechsel gilt ab dem 1. Januar des gewählten Jahres. Welche Mitgliedschaften dafür
+ * Der Wechsel gilt ab dem 1. Januar des gewählten Jahres und umfasst die Rollen der Mitgliedsart,
+ * die gemeinsamen Rollen und die Beitragsrollen (Pflicht-Beitragsrollen werden begonnen, nicht
+ * mehr passende Beitragsrollen beendet). Welche Mitgliedschaften dafür
  * angelegt, gekürzt oder gelöscht werden, berechnet MembershipChangePlanner; diese Klasse prüft
  * die Rechte des angemeldeten Benutzers an allen betroffenen Rollen und schreibt die Änderungen
  * in einer Transaktion über die Membership-Entity, damit Änderungsprotokoll und Benachrichtigungen
@@ -52,11 +54,19 @@ final class MembershipChanger
         }
 
         if ($newType === null) {
+            // Austritt: alle konfigurierten Rollen enden, auch gemeinsame und Beitragsrollen
             $stopRoleIds = $this->loader->getAllRoleIds();
             $targetRoleIds = [];
         } else {
-            $targetRoleIds = $this->loader->getRoleIds(array_merge($newType->roleNames, $this->config->getCommonRoles()));
-            $stopRoleIds = array_values(array_diff($this->loader->getTypeRoleIds(), $targetRoleIds));
+            // Rollen der neuen Mitgliedsart, gemeinsame Rollen und Pflicht-Beitragsrollen beginnen;
+            // optionale Beitragsrollen der neuen Mitgliedsart bleiben, wie sie sind;
+            // alle übrigen Mitgliedsart- und Beitragsrollen enden
+            $targetRoleIds = $this->loader->getRoleIds(array_merge($newType->roleNames, $this->config->getCommonRoles(), $newType->mandatoryFeeRoles));
+            $keepRoleIds = array_merge($targetRoleIds, $this->loader->getRoleIds($newType->optionalFeeRoles));
+            $stopRoleIds = array_values(array_diff(
+                array_merge($this->loader->getTypeRoleIds(), $this->loader->getFeeRoleIds()),
+                $keepRoleIds
+            ));
         }
 
         $operations = $this->planner->plan($user['memberships'], $stopRoleIds, $targetRoleIds, $effectiveDate);

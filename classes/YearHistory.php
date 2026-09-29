@@ -83,6 +83,32 @@ final class YearHistory
     }
 
     /**
+     * Rollen (z. B. optionale Beitragsrollen), in denen die Person im Jahr mindestens einen Tag war,
+     * in der Reihenfolge des Beginns, ohne Doppelte.
+     *
+     * @param array<int, array{role:string, begin:string, end:string}> $periods
+     * @return string[] Rollennamen
+     */
+    public function rolesInYear(array $periods, int $year): array
+    {
+        $yearStart = $year . '-01-01';
+        $yearEnd = $year . '-12-31';
+
+        $hits = [];
+        foreach ($periods as $period) {
+            if ($period['begin'] <= $yearEnd && $period['end'] >= $yearStart) {
+                $begin = max($period['begin'], $yearStart);
+                if (!isset($hits[$period['role']]) || $begin < $hits[$period['role']]) {
+                    $hits[$period['role']] = $begin;
+                }
+            }
+        }
+        uasort($hits, static fn(string $a, string $b): int => $a <=> $b);
+
+        return array_keys($hits);
+    }
+
+    /**
      * Ist die Person am Stichtag Mitglied, d. h. in einer Rolle einer Mitgliedsart oder in einer
      * gemeinsamen Rolle? Grundlage des Filters „Aktive/Ehemalige Kontakte“.
      *

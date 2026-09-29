@@ -75,6 +75,43 @@ final class MembershipTypeConfigTest extends TestCase
         self::assertFalse($config->isTransitionAllowed('A', 'J'));
     }
 
+    public function testFeeRolesPerTypeAndInAllRoleNames(): void
+    {
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), [
+            'mandatoryFeeRoles' => ['A' => 'Aktivbeitrag', 'J' => ['Jugendbeitrag']],
+            'optionalFeeRoles'  => ['A' => ['Bootsgeld', 'Erstbesatz'], 'J' => ['Bootsgeld']],
+        ]));
+
+        $aktiv = $config->getType('A');
+        $jugend = $config->getType('J');
+        self::assertNotNull($aktiv);
+        self::assertNotNull($jugend);
+        self::assertSame(['Aktivbeitrag'], $aktiv->mandatoryFeeRoles);
+        self::assertSame(['Bootsgeld', 'Erstbesatz'], $aktiv->optionalFeeRoles);
+        self::assertSame(['Jugendbeitrag'], $jugend->mandatoryFeeRoles);
+        self::assertSame(['Bootsgeld'], $jugend->optionalFeeRoles);
+        self::assertSame(['Aktivbeitrag', 'Bootsgeld', 'Erstbesatz', 'Jugendbeitrag'], $config->getAllFeeRoleNames());
+        self::assertSame(['Bootsgeld', 'Erstbesatz'], $config->getOptionalFeeRoleNames());
+        self::assertSame(
+            ['Aktiv', 'Bootsbeitrag', 'Jugend', 'Mitglied', 'Aktivbeitrag', 'Bootsgeld', 'Erstbesatz', 'Jugendbeitrag'],
+            $config->getAllRoleNames()
+        );
+        // Beitragsrollen gehören zu keiner Mitgliedsart (keine Kürzel in den Jahresspalten)
+        self::assertNull($config->getTypeKeyForRole('Aktivbeitrag'));
+    }
+
+    public function testFeeRolesDefaultToEmpty(): void
+    {
+        $config = new MembershipTypeConfig(self::validConfig());
+
+        $aktiv = $config->getType('A');
+        self::assertNotNull($aktiv);
+        self::assertSame([], $aktiv->mandatoryFeeRoles);
+        self::assertSame([], $aktiv->optionalFeeRoles);
+        self::assertSame([], $config->getAllFeeRoleNames());
+        self::assertSame([], $config->getOptionalFeeRoleNames());
+    }
+
     public function testWithoutTransitionsEveryChangeIsAllowed(): void
     {
         $config = new MembershipTypeConfig(self::validConfig());
@@ -132,6 +169,14 @@ final class MembershipTypeConfigTest extends TestCase
             'gemeinsame Rolle doppelt' => [array_merge($base, ['commonRoles' => ['Aktiv']]), 'gemeinsame Rolle'],
             'historyYears negativ'     => [array_merge($base, ['historyYears' => -1]), 'historyYears'],
             'historyYears kein int'    => [array_merge($base, ['historyYears' => '10']), 'historyYears'],
+            'Beitragsrolle ist Mitgliedsart-Rolle' => [array_merge($base, ['mandatoryFeeRoles' => ['J' => ['bootsbeitrag']]]), 'Beitragsrolle „bootsbeitrag“'],
+            'Beitragsrolle ist gemeinsame Rolle'   => [array_merge($base, ['optionalFeeRoles' => ['A' => 'Mitglied']]), 'Beitragsrolle „Mitglied“'],
+            'Beitragsrolle unbekanntes Kürzel'     => [array_merge($base, ['optionalFeeRoles' => ['X' => ['Bootsgeld']]]), 'unbekannte Kürzel „X“'],
+            'Beitragsrolle Pflicht und optional'   => [array_merge($base, [
+                'mandatoryFeeRoles' => ['A' => ['Bootsgeld']],
+                'optionalFeeRoles'  => ['A' => ['bootsgeld']],
+            ]), 'zugleich Pflicht und optional'],
+            'Beitragsrollen kein Array'            => [array_merge($base, ['mandatoryFeeRoles' => 'Aktivbeitrag']), '„mandatoryFeeRoles“'],
             'transitions kein Array'   => [array_merge($base, ['transitions' => 'A']), '„transitions“'],
             'transitions unbekannter Ausgang' => [array_merge($base, ['transitions' => ['X' => ['A']]]), 'unbekannte Kürzel „X“'],
             'transitions unbekanntes Ziel'    => [array_merge($base, ['transitions' => ['A' => ['X']]]), 'unbekannte Kürzel „X“'],

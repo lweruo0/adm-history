@@ -11,7 +11,10 @@
  *   - alle Rollen der neuen Mitgliedsart werden begonnen (falls noch nicht aktiv),
  *   - alle Rollen der übrigen Mitgliedsarten werden am 31. Dezember des Vorjahres beendet,
  *   - die gemeinsamen Rollen (commonRoles) bleiben bzw. werden begonnen; bei „kein Mitglied“
- *     werden sie ebenfalls beendet.
+ *     werden sie ebenfalls beendet,
+ *   - die Pflicht-Beitragsrollen (mandatoryFeeRoles) der neuen Mitgliedsart werden begonnen,
+ *     optionale Beitragsrollen (optionalFeeRoles) der neuen Mitgliedsart bleiben, alle übrigen
+ *     Beitragsrollen werden beendet.
  *
  * Die Reihenfolge der Mitgliedsarten bestimmt die Reihenfolge in der Auswahl und in der Legende.
  * Eine Mitgliedsart kann mehrere Rollen umfassen, z. B. 'roles' => ['Aktiv', 'Bootsbeitrag'].
@@ -43,6 +46,25 @@ return [
         'F' => ['A', 'P', ''],
         'J' => ['A', 'F', 'P', ''],
         'P' => ['A', 'F', '', 'E'],
+    ],
+
+    // Pflicht-Beitragsrollen je Mitgliedsart: beim Wechsel zu der Mitgliedsart werden sie ab dem
+    // 1. Januar begonnen, beim Wechsel weg von ihr (oder beim Austritt) am 31. Dezember des
+    // Vorjahres beendet. Mitgliedsarten ohne Pflicht-Beitragsrolle können weggelassen werden.
+    'mandatoryFeeRoles' => [
+        'A' => ['Aktivbeitrag'],
+        'J' => ['Jugendbeitrag'],
+        'P' => ['Passivbeitrag'],
+    ],
+
+    // Optionale Beitragsrollen (Zusatzbeiträge) je Mitgliedsart: sie werden beim Wechsel nicht
+    // begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie
+    // am 31. Dezember des Vorjahres. Für das aktuelle Jahr und das Folgejahr werden sie in der
+    // Spalte „Zusatz“ angezeigt. Eine Rolle darf bei mehreren Mitgliedsarten stehen.
+    'optionalFeeRoles' => [
+        'A' => ['Bearbeitungsgebühr', 'Bootsbeitrag', 'Erstbesatz', 'passiv->aktiv Differenz'],
+        'F' => ['Förderbeitrag 100€', 'Förderbeitrag 50€', 'Förderbeitrag 25€', 'Förderbeitrag 20€', 'Förderbeitrag 12€'],
+        'J' => ['2.Angel'],
     ],
 
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).

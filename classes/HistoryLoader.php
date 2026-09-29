@@ -11,6 +11,8 @@ use RuntimeException;
  *   periods:       Liste aus type (Kürzel), begin, end – nur Mitgliedschaften in Rollen einer Mitgliedsart
  *   commonPeriods: Liste aus begin, end – Mitgliedschaften in den gemeinsamen Rollen (z. B. „Mitglied“);
  *                  damit lassen sich Jahre erkennen, in denen jemand Mitglied ohne ermittelbare Mitgliedsart war
+ *   feePeriods:    Liste aus role (Rollenname), begin, end – Mitgliedschaften in den optionalen
+ *                  Beitragsrollen (Zusatzbeiträge)
  */
 final class HistoryLoader
 {
@@ -63,7 +65,13 @@ final class HistoryLoader
         return $this->getRoleIds($this->config->getCommonRoles());
     }
 
-    /** @return int[] Rollen-IDs aller konfigurierten Rollen */
+    /** @return int[] Rollen-IDs aller Beitragsrollen (Pflicht und optional) */
+    public function getFeeRoleIds(): array
+    {
+        return $this->getRoleIds($this->config->getAllFeeRoleNames());
+    }
+
+    /** @return int[] Rollen-IDs aller konfigurierten Rollen (Mitgliedsarten, gemeinsame Rollen, Beitragsrollen) */
     public function getAllRoleIds(): array
     {
         return $this->getRoleIds($this->config->getAllRoleNames());
@@ -79,6 +87,7 @@ final class HistoryLoader
         foreach ($members as &$member) {
             $member['periods'] = $this->toPeriods($member['memberships']);
             $member['commonPeriods'] = $this->toCommonPeriods($member['memberships']);
+            $member['feePeriods'] = $this->toFeePeriods($member['memberships']);
         }
         unset($member);
 
@@ -95,6 +104,7 @@ final class HistoryLoader
         if ($member !== null) {
             $member['periods'] = $this->toPeriods($member['memberships']);
             $member['commonPeriods'] = $this->toCommonPeriods($member['memberships']);
+            $member['feePeriods'] = $this->toFeePeriods($member['memberships']);
         }
 
         return $member;
@@ -145,6 +155,37 @@ final class HistoryLoader
         foreach ($memberships as $membership) {
             if (isset($commonRoleIds[$membership['rol_id']])) {
                 $periods[] = ['begin' => $membership['begin'], 'end' => $membership['end']];
+            }
+        }
+
+        return $periods;
+    }
+
+    /**
+     * Zeiträume der Mitgliedschaften in den optionalen Beitragsrollen (Zusatzbeiträge), mit dem
+     * konfigurierten Rollennamen.
+     *
+     * @param array<int, array{mem_id:int, rol_id:int, begin:string, end:string}> $memberships
+     * @return array<int, array{role:string, begin:string, end:string}>
+     */
+    public function toFeePeriods(array $memberships): array
+    {
+        $roles = $this->getRoles();
+        $nameByRoleId = [];
+        foreach ($this->config->getOptionalFeeRoleNames() as $roleName) {
+            if (isset($roles[$roleName])) {
+                $nameByRoleId[$roles[$roleName]->id] = $roleName;
+            }
+        }
+
+        $periods = [];
+        foreach ($memberships as $membership) {
+            if (isset($nameByRoleId[$membership['rol_id']])) {
+                $periods[] = [
+                    'role'  => $nameByRoleId[$membership['rol_id']],
+                    'begin' => $membership['begin'],
+                    'end'   => $membership['end'],
+                ];
             }
         }
 

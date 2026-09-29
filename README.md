@@ -56,6 +56,9 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
 - **Aktuelles Jahr und Folgejahr**: Die Auswahl zeigt die Mitgliedsart am 31.12. des Jahres,
   `–` bedeutet „kein Mitglied“. Kam im Jahr noch eine weitere Mitgliedsart vor (Wechsel oder
   Austritt innerhalb des Jahres), zeigt ein Warnsymbol mit Tooltip die Einzelheiten.
+- **Zusatz**: Neben dem aktuellen Jahr und dem Folgejahr steht je eine Spalte „Zusatz“ mit den
+  optionalen Beitragsrollen (`optionalFeeRoles`), in denen die Person in diesem Jahr mindestens
+  einen Tag ist. Sie erscheint nur, wenn optionale Beitragsrollen konfiguriert sind.
 - **Wechsel**: Eine andere Mitgliedsart auswählen und die Rückfrage bestätigen. Die Auswahl bietet
   nur die in `mitgliedsarten.php` (`transitions`) erlaubten Ziele an, einschließlich Austritt (`–`);
   ohne erlaubtes Ziel ist sie gesperrt. Der Wechsel gilt ab dem 1. Januar des gewählten Jahres:
@@ -66,10 +69,13 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
   - ein bereits eingetragenes Ende der bisherigen Mitgliedschaft (geplanter Austritt) wird auf die
     neue Mitgliedschaft übernommen,
   - die gemeinsamen Rollen (`commonRoles`, z. B. „Mitglied“) werden bei Bedarf begonnen oder
-    verlängert; bei `–` (kein Mitglied) enden sie ebenfalls am Vortag.
+    verlängert; bei `–` (kein Mitglied) enden sie ebenfalls am Vortag,
+  - die Pflicht-Beitragsrollen (`mandatoryFeeRoles`) der neuen Mitgliedsart werden begonnen,
+    optionale Beitragsrollen (`optionalFeeRoles`) der neuen Mitgliedsart bleiben unverändert, alle
+    übrigen Beitragsrollen enden am Vortag; bei `–` enden alle Beitragsrollen.
 
-  Die Änderung wird ohne Neuladen der Seite gespeichert; beide änderbaren Spalten der Zeile werden
-  danach aktualisiert. Schlägt sie fehl (z. B. fehlendes Recht an einer Rolle), erscheint die
+  Die Änderung wird ohne Neuladen der Seite gespeichert; beide änderbaren Spalten der Zeile und die
+  Spalten „Zusatz“ werden danach aktualisiert. Schlägt sie fehl (z. B. fehlendes Recht an einer Rolle), erscheint die
   Fehlermeldung und die Auswahl springt zurück. Die Mitgliedschaften werden über die Admidio-Klassen
   geschrieben, damit Änderungsprotokoll und Benachrichtigungen von Admidio erhalten bleiben.
 - **Profil**: Vor- und Nachname verlinken auf das Profil der Person.
@@ -82,6 +88,8 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
 |---|---|
 | `types` | Mitgliedsarten in Anzeigereihenfolge. Schlüssel ist das Kürzel (ein bis drei Zeichen), Wert ein Array mit `name` (Anzeigename), `color` (Hintergrundfarbe als CSS-Wert, z. B. `#cfe2ff`) und `roles` (eine Rolle oder Liste von Rollen). Eine Person hat die Mitgliedsart, sobald sie in einer der Rollen ist; beim Wechsel werden alle Rollen der neuen Mitgliedsart begonnen. Jede Rolle darf nur zu einer Mitgliedsart gehören. |
 | `commonRoles` | Rollen, in denen jedes Mitglied unabhängig von der Mitgliedsart ist (übergeordnete Rolle, z. B. „Mitglied“). Sie erscheinen nicht als eigenes Kürzel in den Jahresspalten; ein Jahr, in dem jemand nur in einer dieser Rollen war, zeigt `?`. Beim Wechsel werden sie mitgeführt. Leer, wenn es keine solche Rolle gibt. |
+| `mandatoryFeeRoles` | Pflicht-Beitragsrollen je Kürzel (Rolle oder Liste). Beim Wechsel zu der Mitgliedsart werden sie begonnen, beim Wechsel weg von ihr oder beim Austritt beendet. Mitgliedsarten ohne Pflicht-Beitragsrolle können fehlen. Beitragsrollen dürfen keine Rollen einer Mitgliedsart und keine gemeinsamen Rollen sein. |
+| `optionalFeeRoles` | Optionale Beitragsrollen (Zusatzbeiträge) je Kürzel. Sie werden beim Wechsel nicht begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie. Für das aktuelle Jahr und das Folgejahr erscheinen sie in der Spalte „Zusatz“. Eine Rolle darf bei mehreren Mitgliedsarten stehen, aber nicht zugleich Pflicht und optional derselben Mitgliedsart sein. |
 | `transitions` | Erlaubte Wechsel in der Auswahl: bisheriges Kürzel => neues Kürzel oder Liste neuer Kürzel. `''` steht für „kein Mitglied“ (als Schlüssel: Eintritt, als Ziel: Austritt), `'*'` für alle Ziele. Beibehalten ist immer erlaubt. Fehlt der Schlüssel, ist jeder Wechsel erlaubt; ist er vorhanden, erlaubt ein nicht genanntes bisheriges Kürzel keinen Wechsel (die Auswahl ist dann gesperrt). |
 | `historyYears` | Standard für „Jahre zurück“ (0 = alle Jahre). |
 

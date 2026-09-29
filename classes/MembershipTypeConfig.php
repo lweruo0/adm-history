@@ -6,8 +6,9 @@ use InvalidArgumentException;
 /**
  * Liest und prüft die Konfiguration der Mitgliedsarten (mitgliedsarten.php).
  *
- * Liefert die Mitgliedsarten in konfigurierter Reihenfolge, die gemeinsamen Rollen und die
- * Standardanzahl der angezeigten Jahre. Die Konfiguration wird beim Laden vollständig geprüft,
+ * Liefert die Mitgliedsarten in konfigurierter Reihenfolge (mit ihren Pflicht- und optionalen
+ * Beitragsrollen), die gemeinsamen Rollen, die erlaubten Wechsel und die Standardanzahl der
+ * angezeigten Jahre. Die Konfiguration wird beim Laden vollständig geprüft,
  * damit Tippfehler sofort als Fehlermeldung erscheinen und nicht als leere Spalten.
  */
 final class MembershipTypeConfig
@@ -39,6 +40,7 @@ final class MembershipTypeConfig
         }
 
         $seenRoles = [];
+        $typeData = [];
         foreach ($types as $key => $type) {
             $key = trim((string) $key);
             if ($key === '' || mb_strlen($key) > 3) {
@@ -66,7 +68,7 @@ final class MembershipTypeConfig
                 }
                 $seenRoles[$lower] = $key;
             }
-            $this->types[$key] = new MembershipType($key, $name, $color, $roles);
+            $typeData[$key] = ['name' => $name, 'color' => $color, 'roles' => $roles];
         }
 
         $this->commonRoles = self::roleList($config['commonRoles'] ?? [], '„commonRoles“');
@@ -74,6 +76,21 @@ final class MembershipTypeConfig
             if (isset($seenRoles[mb_strtolower($role)])) {
                 throw new InvalidArgumentException('Konfiguration: gemeinsame Rolle „' . $role . '“ ist zugleich einer Mitgliedsart zugeordnet.');
             }
+            $seenRoles[mb_strtolower($role)] = '';
+        }
+
+        // Beitragsrollen je Mitgliedsart; sie dürfen weder Rollen einer Mitgliedsart noch gemeinsame Rollen sein
+        $mandatory = self::feeRoleMap($config['mandatoryFeeRoles'] ?? [], '„mandatoryFeeRoles“', array_keys($typeData), $seenRoles);
+        $optional = self::feeRoleMap($config['optionalFeeRoles'] ?? [], '„optionalFeeRoles“', array_keys($typeData), $seenRoles);
+        foreach ($typeData as $key => $data) {
+            $both = array_intersect(
+                array_map(mb_strtolower(...), $mandatory[$key] ?? []),
+                array_map(mb_strtolower(...), $optional[$key] ?? [])
+            );
+            if ($both !== []) {
+                throw new InvalidArgumentException('Konfiguration: Beitragsrolle „' . reset($both) . '“ ist für „' . $key . '“ zugleich Pflicht und optional.');
+            }
+            $this->types[$key] = new MembershipType($key, $data['name'], $data['color'], $data['roles'], $mandatory[$key] ?? [], $optional[$key] ?? []);
         }
 
         $historyYears = $config['historyYears'] ?? 15;
@@ -194,10 +211,34 @@ final class MembershipTypeConfig
         return $names;
     }
 
-    /** @return string[] Alle Rollennamen inklusive der gemeinsamen Rollen */
+    /**
+     * @return string[] Alle Beitragsrollen (Pflicht und optional) aller Mitgliedsarten, ohne Doppelte
+     */
+    public function getAllFeeRoleNames(): array
+    {
+        $names = [];
+        foreach ($this->types as $type) {
+            $names = array_merge($names, $type->mandatoryFeeRoles, $type->optionalFeeRoles);
+        }
+
+        return array_values(array_unique($names));
+    }
+
+    /** @return string[] Alle optionalen Beitragsrollen (Zusatzbeiträge) aller Mitgliedsarten, ohne Doppelte */
+    public function getOptionalFeeRoleNames(): array
+    {
+        $names = [];
+        foreach ($this->types as $type) {
+            $names = array_merge($names, $type->optionalFeeRoles);
+        }
+
+        return array_values(array_unique($names));
+    }
+
+    /** @return string[] Alle Rollennamen inklusive der gemeinsamen Rollen und Beitragsrollen */
     public function getAllRoleNames(): array
     {
-        return array_values(array_unique(array_merge($this->getTypeRoleNames(), $this->commonRoles)));
+        return array_values(array_unique(array_merge($this->getTypeRoleNames(), $this->commonRoles, $this->getAllFeeRoleNames())));
     }
 
     /** Kürzel der Mitgliedsart, zu der eine Rolle gehört, oder null für gemeinsame/unbekannte Rollen. */
@@ -258,6 +299,37 @@ final class MembershipTypeConfig
         }
 
         return $map;
+    }
+
+    /**
+     * Prüft eine Zuordnung Kürzel => Beitragsrollen (Rolle oder Liste von Rollen).
+     *
+     * @param string[]              $typeKeys      bekannte Kürzel
+     * @param array<string, string> $reservedRoles Rollen (kleingeschrieben), die keine Beitragsrollen sein dürfen
+     * @return array<string, string[]> Kürzel => Rollennamen
+     * @throws InvalidArgumentException
+     */
+    private static function feeRoleMap(mixed $map, string $context, array $typeKeys, array $reservedRoles): array
+    {
+        if (!is_array($map)) {
+            throw new InvalidArgumentException('Konfiguration: ' . $context . ' muss ein Array sein.');
+        }
+        $result = [];
+        foreach ($map as $key => $roles) {
+            $key = trim((string) $key);
+            if (!in_array($key, $typeKeys, true)) {
+                throw new InvalidArgumentException('Konfiguration: ' . $context . ' nennt das unbekannte Kürzel „' . $key . '“.');
+            }
+            $roles = self::roleList($roles, $context . ' für „' . $key . '“');
+            foreach ($roles as $role) {
+                if (isset($reservedRoles[mb_strtolower($role)])) {
+                    throw new InvalidArgumentException('Konfiguration: Beitragsrolle „' . $role . '“ ist zugleich Rolle einer Mitgliedsart oder gemeinsame Rolle.');
+                }
+            }
+            $result[$key] = $roles;
+        }
+
+        return $result;
     }
 
     /**

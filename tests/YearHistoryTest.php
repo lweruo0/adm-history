@@ -111,6 +111,22 @@ final class YearHistoryTest extends TestCase
         self::assertFalse($this->history->isMemberWithoutType($periods, [], 2012));
     }
 
+    public function testRolesInYearListsFeeRolesOrderedByBeginWithoutDuplicates(): void
+    {
+        $feePeriods = [
+            ['role' => 'Bootsbeitrag', 'begin' => '2020-01-01', 'end' => '2025-12-31'],
+            ['role' => 'Erstbesatz',   'begin' => '2026-01-01', 'end' => '2026-12-31'],
+            ['role' => 'Bootsbeitrag', 'begin' => '2026-03-01', 'end' => '9999-12-31'],
+            ['role' => 'Bootsbeitrag', 'begin' => '2027-01-01', 'end' => '9999-12-31'],
+        ];
+
+        self::assertSame(['Bootsbeitrag'], $this->history->rolesInYear($feePeriods, 2025));
+        self::assertSame(['Erstbesatz', 'Bootsbeitrag'], $this->history->rolesInYear($feePeriods, 2026));
+        self::assertSame(['Bootsbeitrag'], $this->history->rolesInYear($feePeriods, 2027));
+        self::assertSame([], $this->history->rolesInYear($feePeriods, 2019));
+        self::assertSame([], $this->history->rolesInYear([], 2026));
+    }
+
     public function testIsMemberAtDateConsidersTypeAndCommonRoles(): void
     {
         $periods = [['type' => 'A', 'begin' => '2015-01-01', 'end' => '2020-06-30']];
