@@ -1,0 +1,9 @@
+/config.php
+/.claude/
+/.idea/
+/.vscode/
+/vendor/
+/.phpunit.cache/
+/phpunit.phar
+Thumbs.db
+.DS_Store
