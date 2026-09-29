@@ -32,7 +32,20 @@ return [
     // (Mitgliedsart nicht ermittelbar), zeigt „?“. Beim Wechsel werden sie mitgeführt.
     'commonRoles' => ['Mitglied'],
 
+    // Erlaubte Wechsel in der Auswahl: bisheriges Kürzel => erlaubte neue Kürzel.
+    // '' steht für „kein Mitglied“ (als Schlüssel: Eintritt, als Ziel: Austritt), '*' für alle Ziele.
+    // Beibehalten ist immer erlaubt. Wird der Schlüssel „transitions“ ganz weggelassen, ist jeder
+    // Wechsel erlaubt; ein hier nicht genanntes bisheriges Kürzel erlaubt keinen Wechsel.
+    'transitions' => [
+        ''  => ['A', 'E', 'F', 'J', 'P'], // Eintritt
+        'A' => ['P', '', 'F', 'E'],
+        'E' => [''],
+        'F' => ['A', 'P', ''],
+        'J' => ['A', 'F', 'P', ''],
+        'P' => ['A', 'F', '', 'E'],
+    ],
+
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).
     // In der Übersicht kann der Zeitraum jederzeit umgestellt werden.
-    'historyYears' => 15,
+    'historyYears' => 25,
 ];

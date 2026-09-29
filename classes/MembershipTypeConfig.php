@@ -21,6 +21,13 @@ final class MembershipTypeConfig
     private int $historyYears;
 
     /**
+     * Erlaubte Wechsel: Ausgangs-Kürzel ('' = kein Mitglied) => Ziel-Kürzel ('' = Austritt);
+     * null = keine Einschränkung (Schlüssel „transitions“ fehlt)
+     * @var array<string, string[]>|null
+     */
+    private ?array $transitions = null;
+
+    /**
      * @param array<string, mixed> $config Inhalt von mitgliedsarten.php
      * @throws InvalidArgumentException bei ungültiger Konfiguration
      */
@@ -74,6 +81,61 @@ final class MembershipTypeConfig
             throw new InvalidArgumentException('Konfiguration: „historyYears“ muss eine ganze Zahl ≥ 0 sein.');
         }
         $this->historyYears = $historyYears;
+
+        if (array_key_exists('transitions', $config)) {
+            $this->transitions = $this->transitionList($config['transitions']);
+        }
+    }
+
+    /**
+     * Prüft „transitions“: Ausgangs-Kürzel ('' = kein Mitglied) => Ziel-Kürzel oder Liste von
+     * Ziel-Kürzeln ('' = Austritt); '*' steht für alle Ziele. Das Ausgangs-Kürzel selbst wird als
+     * Ziel ignoriert (Beibehalten ist immer erlaubt).
+     *
+     * @return array<string, string[]>
+     * @throws InvalidArgumentException
+     */
+    private function transitionList(mixed $transitions): array
+    {
+        if (!is_array($transitions)) {
+            throw new InvalidArgumentException('Konfiguration: „transitions“ muss ein Array sein.');
+        }
+        $allKeys = array_merge([''], array_keys($this->types));
+
+        $result = [];
+        foreach ($transitions as $from => $targets) {
+            $from = trim((string) $from);
+            if (!in_array($from, $allKeys, true)) {
+                throw new InvalidArgumentException('Konfiguration: „transitions“ nennt das unbekannte Kürzel „' . $from . '“.');
+            }
+            if (is_string($targets)) {
+                $targets = [$targets];
+            }
+            if (!is_array($targets)) {
+                throw new InvalidArgumentException('Konfiguration: Ziele des Wechsels von „' . $from . '“ müssen ein Array sein.');
+            }
+            $allowed = [];
+            foreach ($targets as $target) {
+                if (!is_string($target)) {
+                    throw new InvalidArgumentException('Konfiguration: Ziele des Wechsels von „' . $from . '“ müssen Kürzel sein.');
+                }
+                $target = trim($target);
+                if ($target === '*') {
+                    $allowed = $allKeys;
+                    break;
+                }
+                if (!in_array($target, $allKeys, true)) {
+                    throw new InvalidArgumentException('Konfiguration: Wechsel von „' . $from . '“ nennt das unbekannte Kürzel „' . $target . '“.');
+                }
+                $allowed[] = $target;
+            }
+            $result[$from] = array_values(array_filter(
+                array_unique($allowed),
+                static fn(string $key): bool => $key !== $from
+            ));
+        }
+
+        return $result;
     }
 
     /**
@@ -157,6 +219,45 @@ final class MembershipTypeConfig
     public function getHistoryYears(): int
     {
         return $this->historyYears;
+    }
+
+    /**
+     * Erlaubte Ziele eines Wechsels ab einer Mitgliedsart, ohne die Ausgangsart selbst, in
+     * Konfigurationsreihenfolge ('' = kein Mitglied zuerst). Ohne „transitions“ sind alle Ziele
+     * erlaubt; mit „transitions“ ist von einem nicht genannten Ausgangs-Kürzel kein Wechsel möglich.
+     *
+     * @param string $from Kürzel der bisherigen Mitgliedsart oder '' (kein Mitglied)
+     * @return string[] Kürzel, '' = Austritt
+     */
+    public function getAllowedTargets(string $from): array
+    {
+        $allKeys = array_merge([''], array_keys($this->types));
+        $allowed = $this->transitions === null ? $allKeys : ($this->transitions[$from] ?? []);
+
+        return array_values(array_filter(
+            $allKeys,
+            static fn(string $key): bool => $key !== $from && in_array($key, $allowed, true)
+        ));
+    }
+
+    /** Ist der Wechsel von $from nach $to erlaubt? Beibehalten ($from === $to) ist immer erlaubt. */
+    public function isTransitionAllowed(string $from, string $to): bool
+    {
+        return $from === $to || in_array($to, $this->getAllowedTargets($from), true);
+    }
+
+    /**
+     * Erlaubte Ziele je Ausgangs-Kürzel (für das JavaScript der Auswahl).
+     * @return array<string, string[]>
+     */
+    public function getAllTransitions(): array
+    {
+        $map = [];
+        foreach (array_merge([''], array_keys($this->types)) as $from) {
+            $map[$from] = $this->getAllowedTargets($from);
+        }
+
+        return $map;
     }
 
     /**

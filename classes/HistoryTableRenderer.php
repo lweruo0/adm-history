@@ -205,14 +205,20 @@ final class HistoryTableRenderer
         $e = Html::escape(...);
         $name = trim($user['first_name'] . ' ' . $user['last_name']);
 
+        // nur die konfigurierten Wechsel anbieten; ohne Alternative ist die Auswahl gesperrt
+        $allowed = $this->config->getAllowedTargets($state['value']);
+        $locked = $allowed === [];
         $html = '<td class="adm-history-year">'
             . '<select class="form-select form-select-sm d-inline-block w-auto adm-history-select"'
             . ' data-user="' . $e($user['usr_uuid']) . '" data-year="' . $year . '" data-name="' . $e($name) . '"'
-            . ' data-previous="' . $e($state['value']) . '" aria-label="Mitgliedsart ' . $year . ' von ' . $e($name) . '">'
-            . '<option value=""' . ($state['value'] === '' ? ' selected' : '') . '>–</option>';
-        foreach ($this->config->getTypes() as $type) {
-            $html .= '<option value="' . $e($type->key) . '"' . ($state['value'] === $type->key ? ' selected' : '') . '>'
-                . $e($type->key) . '</option>';
+            . ' data-previous="' . $e($state['value']) . '" data-locked="' . ($locked ? '1' : '') . '"' . ($locked ? ' disabled' : '')
+            . ' aria-label="Mitgliedsart ' . $year . ' von ' . $e($name) . '">';
+        foreach (array_merge([''], array_keys($this->config->getTypes())) as $key) {
+            if ($key !== $state['value'] && !in_array($key, $allowed, true)) {
+                continue;
+            }
+            $html .= '<option value="' . $e($key) . '"' . ($state['value'] === $key ? ' selected' : '') . '>'
+                . ($key === '' ? '–' : $e($key)) . '</option>';
         }
         $html .= '</select>' . $this->othersIcon($year, $state['others']) . ' ' . $this->unknownBadge(!$state['unknown']) . '</td>';
 
@@ -277,10 +283,11 @@ final class HistoryTableRenderer
             $types[$type->key] = ['name' => $type->name, 'color' => $type->color, 'label' => $type->label()];
         }
         $settings = json_encode([
-            'url'      => $changeUrl,
-            'csrf'     => $csrfToken,
-            'types'    => $types,
-            'language' => $languageUrl,
+            'url'         => $changeUrl,
+            'csrf'        => $csrfToken,
+            'types'       => $types,
+            'transitions' => $this->config->getAllTransitions(),
+            'language'    => $languageUrl,
         ], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
         $page->addJavascript('
@@ -308,7 +315,25 @@ final class HistoryTableRenderer
                     return key === "" ? "kein Mitglied" : settings.types[key].label;
                 }
 
+                // Optionen neu aufbauen: bisheriger Wert plus die dafür konfigurierten Wechsel
+                function buildOptions(select, value) {
+                    var allowed = settings.transitions[value] || [];
+                    select.innerHTML = "";
+                    [""].concat(Object.keys(settings.types)).forEach(function (key) {
+                        if (key !== value && allowed.indexOf(key) === -1) {
+                            return;
+                        }
+                        var option = document.createElement("option");
+                        option.value = key;
+                        option.textContent = key === "" ? "–" : key;
+                        option.selected = key === value;
+                        select.appendChild(option);
+                    });
+                    select.dataset.locked = allowed.length === 0 ? "1" : "";
+                }
+
                 function updateSelect(select, state) {
+                    buildOptions(select, state.value);
                     select.value = state.value;
                     select.dataset.previous = state.value;
                     applyColor(select);
@@ -365,7 +390,7 @@ final class HistoryTableRenderer
                             window.alert("Die Änderung wurde nicht gespeichert: " + error.message);
                         })
                         .finally(function () {
-                            select.disabled = false;
+                            select.disabled = select.dataset.locked === "1";
                         });
                 });
             })();', true);

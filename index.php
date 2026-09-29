@@ -104,7 +104,7 @@ try {
                 throw new RuntimeException('Die Person wurde nicht gefunden.');
             }
 
-            $changer = new MembershipChanger($context, $config, $loader);
+            $changer = new MembershipChanger($context, $config, $loader, $history);
             $operations = $changer->change($user, $postYear, $newType);
 
             // neuen Stand der änderbaren Jahre zurückgeben, damit die Anzeige ohne Neuladen stimmt

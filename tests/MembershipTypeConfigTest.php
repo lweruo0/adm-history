@@ -70,6 +70,46 @@ final class MembershipTypeConfigTest extends TestCase
 
         self::assertSame(['A', 'E', 'F', 'J', 'P'], array_keys($config->getTypes()));
         self::assertSame(['Mitglied'], $config->getCommonRoles());
+        self::assertTrue($config->isTransitionAllowed('J', 'A'));
+        self::assertTrue($config->isTransitionAllowed('A', ''));
+        self::assertFalse($config->isTransitionAllowed('A', 'J'));
+    }
+
+    public function testWithoutTransitionsEveryChangeIsAllowed(): void
+    {
+        $config = new MembershipTypeConfig(self::validConfig());
+
+        self::assertSame(['', 'J'], $config->getAllowedTargets('A'));
+        self::assertSame(['A', 'J'], $config->getAllowedTargets(''));
+        self::assertTrue($config->isTransitionAllowed('A', ''));
+        self::assertTrue($config->isTransitionAllowed('', 'J'));
+        self::assertSame(['' => ['A', 'J'], 'A' => ['', 'J'], 'J' => ['', 'A']], $config->getAllTransitions());
+    }
+
+    public function testTransitionsRestrictTargetsAndKeepConfiguredOrder(): void
+    {
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), ['transitions' => [
+            ''  => 'J',            // einzelnes Ziel als Text
+            'J' => ['', 'A', 'J'], // eigenes Kürzel wird ignoriert
+            'A' => '*',            // alle Ziele
+        ]]));
+
+        self::assertSame(['J'], $config->getAllowedTargets(''));
+        self::assertSame(['', 'A'], $config->getAllowedTargets('J'));
+        self::assertSame(['', 'J'], $config->getAllowedTargets('A'));
+        self::assertTrue($config->isTransitionAllowed('J', 'J'));
+        self::assertTrue($config->isTransitionAllowed('J', ''));
+        self::assertFalse($config->isTransitionAllowed('', 'A'));
+    }
+
+    public function testUnlistedSourceAllowsNoChangeWhenTransitionsConfigured(): void
+    {
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), ['transitions' => ['J' => ['A']]]));
+
+        self::assertSame([], $config->getAllowedTargets('A'));
+        self::assertSame([], $config->getAllowedTargets(''));
+        self::assertTrue($config->isTransitionAllowed('A', 'A'));
+        self::assertFalse($config->isTransitionAllowed('A', ''));
     }
 
     /** @return array<string, array{array<string, mixed>, string}> */
@@ -92,6 +132,10 @@ final class MembershipTypeConfigTest extends TestCase
             'gemeinsame Rolle doppelt' => [array_merge($base, ['commonRoles' => ['Aktiv']]), 'gemeinsame Rolle'],
             'historyYears negativ'     => [array_merge($base, ['historyYears' => -1]), 'historyYears'],
             'historyYears kein int'    => [array_merge($base, ['historyYears' => '10']), 'historyYears'],
+            'transitions kein Array'   => [array_merge($base, ['transitions' => 'A']), '„transitions“'],
+            'transitions unbekannter Ausgang' => [array_merge($base, ['transitions' => ['X' => ['A']]]), 'unbekannte Kürzel „X“'],
+            'transitions unbekanntes Ziel'    => [array_merge($base, ['transitions' => ['A' => ['X']]]), 'unbekannte Kürzel „X“'],
+            'transitions Ziel kein Text'      => [array_merge($base, ['transitions' => ['A' => [1]]]), 'müssen Kürzel sein'],
         ];
     }
 

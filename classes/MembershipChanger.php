@@ -21,22 +21,35 @@ final class MembershipChanger
         private readonly AdmidioContext $context,
         private readonly MembershipTypeConfig $config,
         private readonly HistoryLoader $loader,
+        private readonly YearHistory $history,
         private readonly MembershipChangePlanner $planner = new MembershipChangePlanner(),
     ) {
     }
 
     /**
-     * Setzt die Mitgliedsart einer Person ab dem 1. Januar des Jahres.
+     * Setzt die Mitgliedsart einer Person ab dem 1. Januar des Jahres. Erlaubt sind nur die in
+     * mitgliedsarten.php („transitions“) vorgesehenen Wechsel, ausgehend von der Mitgliedsart am
+     * 31.12. des Jahres (das ist der in der Auswahl angezeigte Wert).
      *
      * @param array<string, mixed> $user    Person aus HistoryLoader::loadUser()
      * @param int                  $year    Jahr, ab dessen 1. Januar der Wechsel gilt
      * @param MembershipType|null  $newType neue Mitgliedsart oder null für „kein Mitglied“
      * @return int Anzahl der ausgeführten Datenbankoperationen (0 = nichts zu ändern)
-     * @throws RuntimeException bei fehlenden Rechten oder Fehlern beim Speichern
+     * @throws RuntimeException bei nicht vorgesehenem Wechsel, fehlenden Rechten oder Fehlern beim Speichern
      */
     public function change(array $user, int $year, ?MembershipType $newType): int
     {
         $effectiveDate = sprintf('%04d-01-01', $year);
+
+        $currentKey = $this->history->yearState($user['periods'], $year)['value'];
+        $newKey = $newType === null ? '' : $newType->key;
+        if (!$this->config->isTransitionAllowed($currentKey, $newKey)) {
+            $currentType = $this->config->getType($currentKey);
+            throw new RuntimeException(
+                'Der Wechsel von „' . ($currentType?->label() ?? 'kein Mitglied') . '“ auf „' . ($newType?->label() ?? 'kein Mitglied')
+                . '“ ist nicht vorgesehen (siehe „transitions“ in mitgliedsarten.php).'
+            );
+        }
 
         if ($newType === null) {
             $stopRoleIds = $this->loader->getAllRoleIds();
