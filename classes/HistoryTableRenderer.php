@@ -10,8 +10,9 @@ use Admidio\UI\Presenter\PagePresenter;
  * Jahr und das Folgejahr wird eine Auswahl angeboten, über die die Mitgliedsart ab dem 1. Januar
  * des jeweiligen Jahres geändert werden kann (nur mit entsprechendem Recht).
  *
- * Die Tabelle wird mit der von Admidio mitgelieferten DataTables-Bibliothek sortier- und
- * durchsuchbar gemacht; der Wechsel wird per fetch() an index.php?mode=change gesendet.
+ * Die Tabelle wird mit der von Admidio mitgelieferten DataTables-Bibliothek durchsuchbar und nach
+ * Vor- und Nachname sortierbar gemacht (die Jahresspalten sind nicht sortierbar, die Zeilen sind
+ * kompakt); der Wechsel wird per fetch() an index.php?mode=change gesendet.
  */
 final class HistoryTableRenderer
 {
@@ -115,16 +116,19 @@ final class HistoryTableRenderer
         $headers = '<th>Vorname</th><th>Nachname</th>';
         foreach ($years as $year) {
             $editable = $canEdit && in_array($year, $editableYears, true);
-            $headers .= '<th class="text-center"' . ($editable ? ' title="Änderbar: Mitgliedsart ab 01.01.' . $year . '"' : '') . '>'
+            $headers .= '<th class="text-center adm-history-year"' . ($editable ? ' title="Änderbar: Mitgliedsart ab 01.01.' . $year . '"' : '') . '>'
                 . $year . ($editable ? ' <i class="bi bi-pencil-square small"></i>' : '') . '</th>';
         }
 
         $page->addHtml('<style>
-            .adm-history-badge { display: inline-block; min-width: 1.7em; padding: 0 .3em; margin: 1px; border-radius: .25rem;
-                text-align: center; font-weight: 600; color: #212529; border: 1px solid rgba(0,0,0,.15); }
-            .adm-history-select { min-width: 4.5em; font-weight: 600; }
-            #' . self::TABLE_ID . ' td, #' . self::TABLE_ID . ' th { white-space: nowrap; }
+            .adm-history-badge { display: inline-block; min-width: 1.7em; padding: 0 .3em; margin: 0 1px; border-radius: .25rem;
+                line-height: 1.3; text-align: center; font-weight: 600; color: #212529; border: 1px solid rgba(0,0,0,.15); }
+            .adm-history-select { min-width: 4.5em; padding-top: 0; padding-bottom: 0; line-height: 1.3; font-weight: 600; }
+            #' . self::TABLE_ID . ' td, #' . self::TABLE_ID . ' th { white-space: nowrap; padding: .1rem .4rem; line-height: 1.3; vertical-align: middle; }
             #' . self::TABLE_ID . ' td.adm-history-year { text-align: center; }
+            /* Jahresspalten sind nicht sortierbar: kein Sortier-Symbol und normaler Mauszeiger */
+            #' . self::TABLE_ID . ' th.adm-history-year { cursor: default; }
+            #' . self::TABLE_ID . ' th.adm-history-year::before, #' . self::TABLE_ID . ' th.adm-history-year::after { display: none; }
         </style>');
 
         if ($rows === []) {
@@ -132,7 +136,7 @@ final class HistoryTableRenderer
             return;
         }
 
-        $page->addHtml('<div class="table-responsive"><table id="' . self::TABLE_ID . '" class="table table-condensed table-hover w-100">'
+        $page->addHtml('<div class="table-responsive"><table id="' . self::TABLE_ID . '" class="table table-sm table-hover w-100">'
             . '<thead><tr>' . $headers . '</tr></thead><tbody>' . implode('', $rows) . '</tbody></table></div>');
 
         $this->addJavascript($page, $changeUrl, $csrfToken);
@@ -149,7 +153,7 @@ final class HistoryTableRenderer
             }
         }
 
-        return '<td class="adm-history-year" data-order="' . Html::escape(implode(' ', $typeKeys)) . '">' . $badges . '</td>';
+        return '<td class="adm-history-year">' . $badges . '</td>';
     }
 
     /**
@@ -164,7 +168,7 @@ final class HistoryTableRenderer
         $e = Html::escape(...);
         $name = trim($user['first_name'] . ' ' . $user['last_name']);
 
-        $html = '<td class="adm-history-year" data-order="' . $e($state['value']) . '">'
+        $html = '<td class="adm-history-year">'
             . '<select class="form-select form-select-sm d-inline-block w-auto adm-history-select"'
             . ' data-user="' . $e($user['usr_uuid']) . '" data-year="' . $year . '" data-name="' . $e($name) . '"'
             . ' data-previous="' . $e($state['value']) . '" aria-label="Mitgliedsart ' . $year . ' von ' . $e($name) . '">'
@@ -232,6 +236,7 @@ final class HistoryTableRenderer
                     "pageLength": 50,
                     "lengthMenu": [[25, 50, 100, -1], [25, 50, 100, "alle"]],
                     "order": [[1, "asc"], [0, "asc"]],
+                    "columnDefs": [{"targets": "adm-history-year", "orderable": false}],
                     "fixedHeader": true,
                     "responsive": false,
                     "autoWidth": false
@@ -249,7 +254,6 @@ final class HistoryTableRenderer
                 function updateSelect(select, state) {
                     select.value = state.value;
                     select.dataset.previous = state.value;
-                    select.closest("td").dataset.order = state.value;
                     applyColor(select);
                     var icon = select.parentNode.querySelector(".adm-history-others");
                     if (icon) {
