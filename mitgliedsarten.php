@@ -28,7 +28,8 @@ return [
     ],
 
     // Rollen, in denen jedes Mitglied unabhängig von der Mitgliedsart ist (übergeordnete Rolle).
-    // Sie werden in den Jahresspalten nicht angezeigt, beim Wechsel aber mitgeführt.
+    // Sie erhalten kein eigenes Kürzel; ein Jahr, in dem jemand nur in einer dieser Rollen war
+    // (Mitgliedsart nicht ermittelbar), zeigt „?“. Beim Wechsel werden sie mitgeführt.
     'commonRoles' => ['Mitglied'],
 
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).

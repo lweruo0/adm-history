@@ -42,10 +42,14 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
 
 - **Jahresspalten**: Je Jahr stehen alle Mitgliedsarten, in denen die Person in diesem Jahr
   mindestens einen Tag war, in zeitlicher Reihenfolge (bei einem Wechsel im Jahr also z. B. `J A`).
-  Grundlage sind alle, auch beendete, Mitgliedschaften in den konfigurierten Rollen.
+  Grundlage sind alle, auch beendete, Mitgliedschaften in den konfigurierten Rollen. War die Person
+  in einem Jahr nur in einer gemeinsamen Rolle (`commonRoles`, z. B. „Mitglied“), ohne dass sich eine
+  Mitgliedsart ermitteln lässt, zeigt die Spalte `?` (auch neben der Auswahl im aktuellen Jahr und
+  Folgejahr). Sortierbar ist die Tabelle nur nach Vor- und Nachname.
 - **Jahre zurück**: Auswahl über der Tabelle, wie viele Jahre vor dem aktuellen Jahr angezeigt
-  werden (Standard aus `mitgliedsarten.php`, „alle Jahre“ ab der ältesten Mitgliedschaft). Personen
-  ohne Mitgliedsart im angezeigten Zeitraum werden ausgeblendet; mit „alle Jahre“ erscheinen sie.
+  werden (Standard aus `mitgliedsarten.php`, „alle Jahre“ ab der ältesten Mitgliedschaft, auch in
+  den gemeinsamen Rollen). Personen ohne Mitgliedsart und ohne `?` im angezeigten Zeitraum werden
+  ausgeblendet; mit „alle Jahre“ erscheinen sie.
 - **Aktuelles Jahr und Folgejahr**: Die Auswahl zeigt die Mitgliedsart am 31.12. des Jahres,
   `–` bedeutet „kein Mitglied“. Kam im Jahr noch eine weitere Mitgliedsart vor (Wechsel oder
   Austritt innerhalb des Jahres), zeigt ein Warnsymbol mit Tooltip die Einzelheiten.
@@ -73,7 +77,7 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
 | Schlüssel | Bedeutung |
 |---|---|
 | `types` | Mitgliedsarten in Anzeigereihenfolge. Schlüssel ist das Kürzel (ein bis drei Zeichen), Wert ein Array mit `name` (Anzeigename), `color` (Hintergrundfarbe als CSS-Wert, z. B. `#cfe2ff`) und `roles` (eine Rolle oder Liste von Rollen). Eine Person hat die Mitgliedsart, sobald sie in einer der Rollen ist; beim Wechsel werden alle Rollen der neuen Mitgliedsart begonnen. Jede Rolle darf nur zu einer Mitgliedsart gehören. |
-| `commonRoles` | Rollen, in denen jedes Mitglied unabhängig von der Mitgliedsart ist (übergeordnete Rolle, z. B. „Mitglied“). Sie erscheinen nicht in den Jahresspalten, werden beim Wechsel aber mitgeführt. Leer, wenn es keine solche Rolle gibt. |
+| `commonRoles` | Rollen, in denen jedes Mitglied unabhängig von der Mitgliedsart ist (übergeordnete Rolle, z. B. „Mitglied“). Sie erscheinen nicht als eigenes Kürzel in den Jahresspalten; ein Jahr, in dem jemand nur in einer dieser Rollen war, zeigt `?`. Beim Wechsel werden sie mitgeführt. Leer, wenn es keine solche Rolle gibt. |
 | `historyYears` | Standard für „Jahre zurück“ (0 = alle Jahre). |
 
 Rollennamen werden ohne Beachtung der Groß-/Kleinschreibung in der aktuellen Organisation gesucht.

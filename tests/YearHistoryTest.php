@@ -83,17 +83,40 @@ final class YearHistoryTest extends TestCase
             ['type' => 'A', 'begin' => '2026-07-01', 'end' => '9999-12-31'],
         ];
 
-        self::assertSame(['value' => 'A', 'others' => ['J']], $this->history->yearState($periods, 2026));
-        self::assertSame(['value' => 'J', 'others' => []], $this->history->yearState($periods, 2025));
-        self::assertSame(['value' => 'A', 'others' => []], $this->history->yearState($periods, 2027));
+        self::assertSame(['value' => 'A', 'others' => ['J'], 'unknown' => false], $this->history->yearState($periods, 2026));
+        self::assertSame(['value' => 'J', 'others' => [], 'unknown' => false], $this->history->yearState($periods, 2025));
+        self::assertSame(['value' => 'A', 'others' => [], 'unknown' => false], $this->history->yearState($periods, 2027));
     }
 
     public function testYearStateOfLeaverWithinYearIsEmptyWithFormerTypeAsOther(): void
     {
         $periods = [['type' => 'P', 'begin' => '2000-01-01', 'end' => '2026-03-31']];
 
-        self::assertSame(['value' => '', 'others' => ['P']], $this->history->yearState($periods, 2026));
-        self::assertSame(['value' => '', 'others' => []], $this->history->yearState($periods, 2027));
+        self::assertSame(['value' => '', 'others' => ['P'], 'unknown' => false], $this->history->yearState($periods, 2026));
+        self::assertSame(['value' => '', 'others' => [], 'unknown' => false], $this->history->yearState($periods, 2027));
+    }
+
+    public function testMemberWithoutTypeIsUnknownOnlyInYearsWithCommonRoleAndWithoutType(): void
+    {
+        // Mitglied seit 2010, Mitgliedsart erst ab 2015 erfasst, Austritt Mitte 2020
+        $periods = [['type' => 'A', 'begin' => '2015-01-01', 'end' => '2020-06-30']];
+        $common = [['begin' => '2010-05-01', 'end' => '2020-06-30']];
+
+        self::assertFalse($this->history->isMemberWithoutType($periods, $common, 2009));
+        self::assertTrue($this->history->isMemberWithoutType($periods, $common, 2010));
+        self::assertTrue($this->history->isMemberWithoutType($periods, $common, 2014));
+        self::assertFalse($this->history->isMemberWithoutType($periods, $common, 2015));
+        self::assertFalse($this->history->isMemberWithoutType($periods, $common, 2020));
+        self::assertFalse($this->history->isMemberWithoutType($periods, $common, 2021));
+        self::assertFalse($this->history->isMemberWithoutType($periods, [], 2012));
+    }
+
+    public function testYearStateReportsUnknownForMemberWithoutType(): void
+    {
+        $common = [['begin' => '2020-01-01', 'end' => '9999-12-31']];
+
+        self::assertSame(['value' => '', 'others' => [], 'unknown' => true], $this->history->yearState([], 2026, $common));
+        self::assertSame(['value' => '', 'others' => [], 'unknown' => false], $this->history->yearState([], 2019, $common));
     }
 
     public function testFirstYearAcrossUsers(): void

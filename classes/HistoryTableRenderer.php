@@ -61,6 +61,9 @@ final class HistoryTableRenderer
             $html .= $this->badge($type) . ' <span class="me-3">' . $e($type->name)
                 . ' <span class="text-muted small">(' . $e(implode(', ', $type->roleNames)) . ')</span></span>';
         }
+        if ($this->config->getCommonRoles() !== []) {
+            $html .= $this->unknownBadge(false) . ' <span class="me-3">' . $e($this->unknownTitle()) . '</span>';
+        }
         $html .= '</div></div>'
             . '<div class="col-12 form-text">Je Jahr stehen alle Mitgliedsarten, in denen die Person in diesem Jahr mindestens einen Tag war. '
             . 'Für das aktuelle Jahr und das Folgejahr zeigt die Auswahl die Mitgliedsart am 31.12.; eine Änderung gilt ab dem 1. Januar '
@@ -93,13 +96,13 @@ final class HistoryTableRenderer
             $cells = [];
             $visible = false;
             foreach ($years as $year) {
-                $state = $this->history->yearState($user['periods'], $year);
+                $state = $this->history->yearState($user['periods'], $year, $user['commonPeriods']);
                 $inYear = $this->history->typesInYear($user['periods'], $year);
-                $visible = $visible || $inYear !== [];
+                $visible = $visible || $inYear !== [] || $state['unknown'];
                 if ($canEdit && in_array($year, $editableYears, true)) {
                     $cells[] = $this->selectCell($user, $year, $state);
                 } else {
-                    $cells[] = $this->historyCell($inYear);
+                    $cells[] = $this->historyCell($inYear, $state['unknown']);
                 }
             }
             if (!$visible) {
@@ -123,6 +126,7 @@ final class HistoryTableRenderer
         $page->addHtml('<style>
             .adm-history-badge { display: inline-block; min-width: 1.7em; padding: 0 .3em; margin: 0 1px; border-radius: .25rem;
                 line-height: 1.3; text-align: center; font-weight: 600; color: #212529; border: 1px solid rgba(0,0,0,.15); }
+            .adm-history-unknown { background-color: #e9ecef; color: #6c757d; }
             .adm-history-select { min-width: 4.5em; padding-top: 0; padding-bottom: 0; line-height: 1.3; font-weight: 600; }
             #' . self::TABLE_ID . ' td, #' . self::TABLE_ID . ' th { white-space: nowrap; padding: .1rem .4rem; line-height: 1.3; vertical-align: middle; }
             #' . self::TABLE_ID . ' td.adm-history-year { text-align: center; }
@@ -142,8 +146,13 @@ final class HistoryTableRenderer
         $this->addJavascript($page, $changeUrl, $csrfToken);
     }
 
-    /** Zelle eines vergangenen Jahres: farbige Kürzel aller Mitgliedsarten des Jahres. */
-    private function historyCell(array $typeKeys): string
+    /**
+     * Zelle eines vergangenen Jahres: farbige Kürzel aller Mitgliedsarten des Jahres; „?“, wenn die
+     * Person Mitglied ohne ermittelbare Mitgliedsart war.
+     *
+     * @param string[] $typeKeys
+     */
+    private function historyCell(array $typeKeys, bool $unknown): string
     {
         $badges = '';
         foreach ($typeKeys as $typeKey) {
@@ -152,16 +161,19 @@ final class HistoryTableRenderer
                 $badges .= $this->badge($type);
             }
         }
+        if ($unknown) {
+            $badges .= $this->unknownBadge(false);
+        }
 
         return '<td class="adm-history-year">' . $badges . '</td>';
     }
 
     /**
      * Zelle eines änderbaren Jahres: Auswahl mit der Mitgliedsart am 31.12.; weitere Mitgliedsarten
-     * des Jahres werden als Warnsymbol mit Tooltip angezeigt.
+     * des Jahres werden als Warnsymbol mit Tooltip angezeigt, „Mitglied ohne Mitgliedsart“ als „?“.
      *
-     * @param array<string, mixed>                $user
-     * @param array{value:string, others:string[]} $state
+     * @param array<string, mixed>                              $user
+     * @param array{value:string, others:string[], unknown:bool} $state
      */
     private function selectCell(array $user, int $year, array $state): string
     {
@@ -177,9 +189,29 @@ final class HistoryTableRenderer
             $html .= '<option value="' . $e($type->key) . '"' . ($state['value'] === $type->key ? ' selected' : '') . '>'
                 . $e($type->key) . '</option>';
         }
-        $html .= '</select>' . $this->othersIcon($year, $state['others']) . '</td>';
+        $html .= '</select>' . $this->othersIcon($year, $state['others']) . ' ' . $this->unknownBadge(!$state['unknown']) . '</td>';
 
         return $html;
+    }
+
+    /**
+     * Kennzeichen „?“: Mitglied in einer gemeinsamen Rolle, aber ohne ermittelbare Mitgliedsart.
+     * In änderbaren Zellen wird es immer ausgegeben und bei Bedarf verborgen, damit das JavaScript
+     * es nach einer Änderung ein- oder ausblenden kann.
+     */
+    private function unknownBadge(bool $hidden): string
+    {
+        return '<span class="adm-history-badge adm-history-unknown' . ($hidden ? ' d-none' : '') . '" title="'
+            . Html::escape($this->unknownTitle()) . '">?</span>';
+    }
+
+    /** Erklärung des Kennzeichens „?“ (Tooltip und Legende). */
+    private function unknownTitle(): string
+    {
+        $roles = $this->config->getCommonRoles();
+        $roleText = $roles === [] ? 'einer gemeinsamen Rolle' : 'der Rolle „' . implode('“, „', $roles) . '“';
+
+        return 'Mitglied in ' . $roleText . ', aber Mitgliedsart nicht ermittelbar';
     }
 
     /** Warnsymbol für weitere Mitgliedsarten im Jahr; ohne weitere Mitgliedsarten unsichtbar. */
@@ -260,6 +292,10 @@ final class HistoryTableRenderer
                         var labels = state.others.map(labelOf);
                         icon.title = labels.length ? "Im Jahr " + select.dataset.year + " außerdem: " + labels.join(", ") : "";
                         icon.classList.toggle("d-none", labels.length === 0);
+                    }
+                    var unknown = select.parentNode.querySelector(".adm-history-unknown");
+                    if (unknown) {
+                        unknown.classList.toggle("d-none", !state.unknown);
                     }
                 }
 

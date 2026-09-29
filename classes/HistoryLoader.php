@@ -8,8 +8,9 @@ use RuntimeException;
  * Personen mit ihren Mitgliedschaften und übersetzt Mitgliedschaften in Zeiträume je Mitgliedsart.
  *
  * Person je Eintrag (Schlüssel usr_uuid): wie MembershipRepository, zusätzlich
- *   periods: Liste aus type (Kürzel), begin, end – nur Mitgliedschaften in Rollen einer Mitgliedsart,
- *            gemeinsame Rollen (z. B. „Mitglied“) erscheinen hier nicht
+ *   periods:       Liste aus type (Kürzel), begin, end – nur Mitgliedschaften in Rollen einer Mitgliedsart
+ *   commonPeriods: Liste aus begin, end – Mitgliedschaften in den gemeinsamen Rollen (z. B. „Mitglied“);
+ *                  damit lassen sich Jahre erkennen, in denen jemand Mitglied ohne ermittelbare Mitgliedsart war
  */
 final class HistoryLoader
 {
@@ -77,6 +78,7 @@ final class HistoryLoader
         $members = $this->repository->getMembersWithMemberships($this->getAllRoleIds());
         foreach ($members as &$member) {
             $member['periods'] = $this->toPeriods($member['memberships']);
+            $member['commonPeriods'] = $this->toCommonPeriods($member['memberships']);
         }
         unset($member);
 
@@ -92,6 +94,7 @@ final class HistoryLoader
         $member = $this->repository->getMemberByUuid($usrUuid, $this->getAllRoleIds());
         if ($member !== null) {
             $member['periods'] = $this->toPeriods($member['memberships']);
+            $member['commonPeriods'] = $this->toCommonPeriods($member['memberships']);
         }
 
         return $member;
@@ -122,6 +125,26 @@ final class HistoryLoader
                     'begin' => $membership['begin'],
                     'end'   => $membership['end'],
                 ];
+            }
+        }
+
+        return $periods;
+    }
+
+    /**
+     * Zeiträume der Mitgliedschaften in den gemeinsamen Rollen (z. B. „Mitglied“).
+     *
+     * @param array<int, array{mem_id:int, rol_id:int, begin:string, end:string}> $memberships
+     * @return array<int, array{begin:string, end:string}>
+     */
+    public function toCommonPeriods(array $memberships): array
+    {
+        $commonRoleIds = array_flip($this->getCommonRoleIds());
+
+        $periods = [];
+        foreach ($memberships as $membership) {
+            if (isset($commonRoleIds[$membership['rol_id']])) {
+                $periods[] = ['begin' => $membership['begin'], 'end' => $membership['end']];
             }
         }
 

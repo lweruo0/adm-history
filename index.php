@@ -109,7 +109,7 @@ try {
             $user = $loader->loadUser($postUserUuid) ?? $user;
             $years = [];
             foreach ($editableYears as $year) {
-                $years[(string) $year] = $history->yearState($user['periods'], $year);
+                $years[(string) $year] = $history->yearState($user['periods'], $year, $user['commonPeriods']);
             }
             admHistorySendJson([
                 'status'  => 'ok',
@@ -137,7 +137,9 @@ try {
 
     $users = $loader->loadAll();
 
-    $firstYear = $getYears === 0 ? ($history->firstYear(array_column($users, 'periods')) ?? $currentYear) : $currentYear - $getYears;
+    // „alle Jahre“: ab der ältesten Mitgliedschaft, auch in den gemeinsamen Rollen
+    $allPeriods = array_map(static fn(array $user): array => array_merge($user['periods'], $user['commonPeriods']), $users);
+    $firstYear = $getYears === 0 ? ($history->firstYear($allPeriods) ?? $currentYear) : $currentYear - $getYears;
     $firstYear = min($firstYear, $currentYear);
     $years = range($currentYear + 1, $firstYear); // absteigend
 

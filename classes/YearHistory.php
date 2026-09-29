@@ -65,14 +65,45 @@ final class YearHistory
     }
 
     /**
-     * Zustand eines Jahres für die Auswahl: Mitgliedsart am Jahresende (31.12.) und alle weiteren
+     * War die Person im Jahr mindestens einen Tag in einem der Zeiträume (z. B. der gemeinsamen Rollen)?
+     *
+     * @param array<int, array{begin:string, end:string}> $periods
+     */
+    public function hasPeriodInYear(array $periods, int $year): bool
+    {
+        $yearStart = $year . '-01-01';
+        $yearEnd = $year . '-12-31';
+        foreach ($periods as $period) {
+            if ($period['begin'] <= $yearEnd && $period['end'] >= $yearStart) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * War die Person im Jahr Mitglied (gemeinsame Rolle, z. B. „Mitglied“), ohne dass sich eine
+     * Mitgliedsart ermitteln lässt? Solche Jahre werden in der Tabelle mit „?“ gekennzeichnet.
+     *
+     * @param array<int, array{type:string, begin:string, end:string}> $periods       Zeiträume je Mitgliedsart
+     * @param array<int, array{begin:string, end:string}>              $commonPeriods Zeiträume in den gemeinsamen Rollen
+     */
+    public function isMemberWithoutType(array $periods, array $commonPeriods, int $year): bool
+    {
+        return $this->typesInYear($periods, $year) === [] && $this->hasPeriodInYear($commonPeriods, $year);
+    }
+
+    /**
+     * Zustand eines Jahres für die Auswahl: Mitgliedsart am Jahresende (31.12.), alle weiteren
      * Mitgliedsarten, die im Jahr vorkamen (z. B. bei einem Wechsel innerhalb des Jahres oder
-     * einem Austritt im Jahr).
+     * einem Austritt im Jahr), und ob die Person im Jahr Mitglied ohne ermittelbare Mitgliedsart war.
      *
      * @param array<int, array{type:string, begin:string, end:string}> $periods
-     * @return array{value:string, others:string[]} value = Kürzel am 31.12. oder '' (kein Mitglied)
+     * @param array<int, array{begin:string, end:string}>              $commonPeriods Zeiträume in den gemeinsamen Rollen
+     * @return array{value:string, others:string[], unknown:bool} value = Kürzel am 31.12. oder '' (kein Mitglied)
      */
-    public function yearState(array $periods, int $year): array
+    public function yearState(array $periods, int $year, array $commonPeriods = []): array
     {
         $atEnd = $this->typesAtDate($periods, $year . '-12-31');
         $value = $atEnd[0] ?? '';
@@ -81,13 +112,17 @@ final class YearHistory
             static fn(string $type): bool => $type !== $value
         ));
 
-        return ['value' => $value, 'others' => $others];
+        return [
+            'value'   => $value,
+            'others'  => $others,
+            'unknown' => $this->isMemberWithoutType($periods, $commonPeriods, $year),
+        ];
     }
 
     /**
-     * Erstes Jahr, in dem irgendeine der übergebenen Personen eine Mitgliedsart hatte, oder null.
+     * Erstes Jahr, in dem irgendeine der übergebenen Personen in einem der Zeiträume war, oder null.
      *
-     * @param array<array-key, array<int, array{type:string, begin:string, end:string}>> $periodsByUser
+     * @param array<array-key, array<int, array{begin:string, end:string}>> $periodsByUser
      */
     public function firstYear(array $periodsByUser): ?int
     {
