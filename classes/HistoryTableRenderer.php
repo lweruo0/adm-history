@@ -110,10 +110,10 @@ final class HistoryTableRenderer
      * @param int[]                               $years         anzuzeigende Jahre, absteigend
      * @param int[]                               $editableYears Jahre mit Auswahl (aktuelles Jahr und Folgejahr)
      * @param bool                                $canEdit       darf der Benutzer Mitgliedsarten ändern?
-     * @param string                              $changeUrl     Ziel der Änderung (index.php?mode=change)
+     * @param string                              $pluginUrl     URL von index.php (Ziel der Änderungen mit mode=change bzw. mode=addfee)
      * @param string                              $csrfToken     CSRF-Token der aktuellen Session
      */
-    public function render(PagePresenter $page, array $users, array $years, array $editableYears, bool $canEdit, string $changeUrl, string $csrfToken): void
+    public function render(PagePresenter $page, array $users, array $years, array $editableYears, bool $canEdit, string $pluginUrl, string $csrfToken): void
     {
         $e = Html::escape(...);
 
@@ -135,7 +135,7 @@ final class HistoryTableRenderer
                     $cells[] = $this->historyCell($inYear, $state['unknown']);
                 }
                 if ($showFees && $editableYear) {
-                    $cells[] = $this->feeCell($user, $year, $this->history->rolesInYear($user['feePeriods'], $year));
+                    $cells[] = $this->feeCell($user, $year, $this->history->rolesInYear($user['feePeriods'], $year), $state['value'], $canEdit);
                 }
             }
             if (!$visible) {
@@ -183,7 +183,7 @@ final class HistoryTableRenderer
         $page->addHtml('<div class="table-responsive"><table id="' . self::TABLE_ID . '" class="table table-sm table-hover w-100">'
             . '<thead><tr>' . $headers . '</tr></thead><tbody>' . implode('', $rows) . '</tbody></table></div>');
 
-        $this->addJavascript($page, $changeUrl, $csrfToken);
+        $this->addJavascript($page, $pluginUrl, $csrfToken);
     }
 
     /**
@@ -241,16 +241,36 @@ final class HistoryTableRenderer
     }
 
     /**
-     * Zelle „Zusatz“: optionale Beitragsrollen, in denen die Person im Jahr ist. Die Zelle trägt
-     * Person und Jahr als data-Attribute, damit das JavaScript sie nach einem Wechsel aktualisiert.
+     * Zelle „Zusatz“: optionale Beitragsrollen, in denen die Person im Jahr ist, und (mit Recht)
+     * eine Auswahl „+“ mit den noch nicht vorhandenen Zusatzbeiträgen der Mitgliedsart am 31.12.
+     * Die Zelle trägt Person und Jahr als data-Attribute, damit das JavaScript sie nach einer
+     * Änderung aktualisiert.
      *
      * @param array<string, mixed> $user
-     * @param string[]             $roleNames
+     * @param string[]             $roleNames vorhandene Zusatzbeiträge des Jahres
+     * @param string               $typeKey   Mitgliedsart am 31.12. des Jahres ('' = kein Mitglied)
      */
-    private function feeCell(array $user, int $year, array $roleNames): string
+    private function feeCell(array $user, int $year, array $roleNames, string $typeKey, bool $canEdit): string
     {
-        return '<td class="adm-history-fees" data-user="' . Html::escape($user['usr_uuid']) . '" data-year="' . $year . '">'
-            . $this->feeBadges($roleNames) . '</td>';
+        $e = Html::escape(...);
+        $name = trim($user['first_name'] . ' ' . $user['last_name']);
+
+        $html = '<td class="adm-history-fees" data-user="' . $e($user['usr_uuid']) . '" data-year="' . $year . '">'
+            . '<span class="adm-history-fee-list">' . $this->feeBadges($roleNames) . '</span>';
+        if ($canEdit) {
+            $type = $this->config->getType($typeKey);
+            $options = $type === null ? [] : array_values(array_diff($type->optionalFeeRoles, $roleNames));
+            $html .= ' <select class="form-select form-select-sm d-inline-block w-auto adm-history-fee-add' . ($options === [] ? ' d-none' : '') . '"'
+                . ' data-user="' . $e($user['usr_uuid']) . '" data-year="' . $year . '" data-name="' . $e($name) . '"'
+                . ' title="Zusatzbeitrag ab 01.01.' . $year . ' hinzufügen" aria-label="Zusatzbeitrag ' . $year . ' für ' . $e($name) . ' hinzufügen">'
+                . '<option value="">+</option>';
+            foreach ($options as $roleName) {
+                $html .= '<option value="' . $e($roleName) . '">' . $e($roleName) . '</option>';
+            }
+            $html .= '</select>';
+        }
+
+        return $html . '</td>';
     }
 
     /** @param string[] $roleNames */
@@ -305,8 +325,11 @@ final class HistoryTableRenderer
             . Html::escape($type->name) . '">' . Html::escape($type->key) . '</span>';
     }
 
-    /** DataTables-Initialisierung und Verarbeitung der Auswahl (Wechsel per fetch an index.php). */
-    private function addJavascript(PagePresenter $page, string $changeUrl, string $csrfToken): void
+    /**
+     * DataTables-Initialisierung und Verarbeitung der Auswahlfelder: Wechsel der Mitgliedsart
+     * (mode=change) und Hinzufügen eines Zusatzbeitrags (mode=addfee), jeweils per fetch an index.php.
+     */
+    private function addJavascript(PagePresenter $page, string $pluginUrl, string $csrfToken): void
     {
         $page->addJavascriptFile(ADMIDIO_URL . FOLDER_LIBS . '/datatables/datatables.js');
         $page->addCssFile(ADMIDIO_URL . FOLDER_LIBS . '/datatables/datatables.css');
@@ -319,10 +342,16 @@ final class HistoryTableRenderer
 
         $types = [];
         foreach ($this->config->getTypes() as $type) {
-            $types[$type->key] = ['name' => $type->name, 'color' => $type->color, 'label' => $type->label()];
+            $types[$type->key] = [
+                'name'         => $type->name,
+                'color'        => $type->color,
+                'label'        => $type->label(),
+                'optionalFees' => $type->optionalFeeRoles,
+            ];
         }
         $settings = json_encode([
-            'url'         => $changeUrl,
+            'changeUrl'   => $pluginUrl . '?mode=change',
+            'addFeeUrl'   => $pluginUrl . '?mode=addfee',
             'csrf'        => $csrfToken,
             'types'       => $types,
             'transitions' => $this->config->getAllTransitions(),
@@ -371,15 +400,63 @@ final class HistoryTableRenderer
                     select.dataset.locked = allowed.length === 0 ? "1" : "";
                 }
 
-                // Zelle „Zusatz“ mit den optionalen Beitragsrollen des Jahres neu füllen
-                function updateFees(cell, roleNames) {
-                    cell.innerHTML = "";
+                // Zelle „Zusatz“ neu füllen: vorhandene Beitragsrollen des Jahres und die
+                // Auswahl „+“ mit den noch fehlenden Zusatzbeiträgen der Mitgliedsart
+                function updateFees(cell, roleNames, typeKey) {
+                    var list = cell.querySelector(".adm-history-fee-list");
+                    list.innerHTML = "";
                     roleNames.forEach(function (roleName) {
                         var badge = document.createElement("span");
                         badge.className = "adm-history-fee";
                         badge.textContent = roleName;
-                        cell.appendChild(badge);
+                        list.appendChild(badge);
                     });
+                    var add = cell.querySelector(".adm-history-fee-add");
+                    if (!add) {
+                        return;
+                    }
+                    var type = settings.types[typeKey];
+                    var options = type ? type.optionalFees.filter(function (name) { return roleNames.indexOf(name) === -1; }) : [];
+                    add.innerHTML = "";
+                    var placeholder = document.createElement("option");
+                    placeholder.value = "";
+                    placeholder.textContent = "+";
+                    add.appendChild(placeholder);
+                    options.forEach(function (name) {
+                        var option = document.createElement("option");
+                        option.value = name;
+                        option.textContent = name;
+                        add.appendChild(option);
+                    });
+                    add.value = "";
+                    add.classList.toggle("d-none", options.length === 0);
+                }
+
+                // Antwort des Servers (Stand beider änderbaren Jahre) in die Zeile übernehmen
+                function applyResponse(userUuid, data) {
+                    Object.keys(data.years).forEach(function (year) {
+                        var select = table.querySelector(".adm-history-select[data-user=\"" + userUuid + "\"][data-year=\"" + year + "\"]");
+                        if (select) {
+                            updateSelect(select, data.years[year]);
+                        }
+                        var cell = table.querySelector(".adm-history-fees[data-user=\"" + userUuid + "\"][data-year=\"" + year + "\"]");
+                        if (cell && data.fees && data.fees[year]) {
+                            updateFees(cell, data.fees[year], data.years[year].value);
+                        }
+                    });
+                }
+
+                function post(url, fields) {
+                    var body = new URLSearchParams(fields);
+                    body.append("adm_csrf_token", settings.csrf);
+                    return fetch(url, {method: "POST", body: body, headers: {"X-Requested-With": "XMLHttpRequest"}, credentials: "same-origin"})
+                        .then(function (response) { return response.json(); })
+                        .then(function (data) {
+                            if (data.status !== "ok") {
+                                throw new Error(data.message || "Unbekannter Fehler");
+                            }
+                            return data;
+                        });
                 }
 
                 function updateSelect(select, state) {
@@ -415,30 +492,9 @@ final class HistoryTableRenderer
                     }
 
                     select.disabled = true;
-                    var body = new URLSearchParams({
-                        adm_csrf_token: settings.csrf,
-                        user_uuid: select.dataset.user,
-                        year: select.dataset.year,
-                        type: select.value
-                    });
-                    fetch(settings.url, {method: "POST", body: body, headers: {"X-Requested-With": "XMLHttpRequest"}, credentials: "same-origin"})
-                        .then(function (response) { return response.json(); })
+                    post(settings.changeUrl, {user_uuid: select.dataset.user, year: select.dataset.year, type: select.value})
                         .then(function (data) {
-                            if (data.status !== "ok") {
-                                throw new Error(data.message || "Unbekannter Fehler");
-                            }
-                            Object.keys(data.years).forEach(function (year) {
-                                var other = table.querySelector(".adm-history-select[data-user=\"" + select.dataset.user + "\"][data-year=\"" + year + "\"]");
-                                if (other) {
-                                    updateSelect(other, data.years[year]);
-                                }
-                            });
-                            Object.keys(data.fees || {}).forEach(function (year) {
-                                var cell = table.querySelector(".adm-history-fees[data-user=\"" + select.dataset.user + "\"][data-year=\"" + year + "\"]");
-                                if (cell) {
-                                    updateFees(cell, data.fees[year]);
-                                }
-                            });
+                            applyResponse(select.dataset.user, data);
                         })
                         .catch(function (error) {
                             select.value = previous;
@@ -447,6 +503,33 @@ final class HistoryTableRenderer
                         })
                         .finally(function () {
                             select.disabled = select.dataset.locked === "1";
+                        });
+                });
+
+                // Zusatzbeitrag hinzufügen (Auswahl „+“ in der Spalte „Zusatz“)
+                table.addEventListener("change", function (event) {
+                    var select = event.target;
+                    if (!select.classList.contains("adm-history-fee-add") || select.value === "") {
+                        return;
+                    }
+                    var roleName = select.value;
+                    var question = select.dataset.name + ": Zusatzbeitrag „" + roleName + "“ ab 01.01." + select.dataset.year + " hinzufügen?";
+                    if (!window.confirm(question)) {
+                        select.value = "";
+                        return;
+                    }
+
+                    select.disabled = true;
+                    post(settings.addFeeUrl, {user_uuid: select.dataset.user, year: select.dataset.year, role: roleName})
+                        .then(function (data) {
+                            applyResponse(select.dataset.user, data);
+                        })
+                        .catch(function (error) {
+                            select.value = "";
+                            window.alert("Der Zusatzbeitrag wurde nicht gespeichert: " + error.message);
+                        })
+                        .finally(function () {
+                            select.disabled = false;
                         });
                 });
             })();', true);

@@ -11,10 +11,12 @@
  *   status     (GET)  Filter nach aktueller Mitgliedschaft: „active“ (heute Mitglied, Standard),
  *                     „former“ (früher Mitglied, heute nicht mehr) oder „all“
  *   years      (GET)  Anzahl der Jahre vor dem aktuellen Jahr (0 = alle); Standard aus mitgliedsarten.php
- *   mode       (GET)  „change“ für die Änderung per fetch() (POST, Antwort als JSON), sonst Übersicht
- *   user_uuid  (POST) Person, deren Mitgliedsart geändert wird
- *   year       (POST) Jahr, ab dessen 1. Januar der Wechsel gilt (aktuelles Jahr oder Folgejahr)
- *   type       (POST) Kürzel der neuen Mitgliedsart, leer = kein Mitglied
+ *   mode       (GET)  „change“ für die Änderung der Mitgliedsart, „addfee“ für einen Zusatzbeitrag
+ *                     (beide per fetch(), POST, Antwort als JSON), sonst Übersicht
+ *   user_uuid  (POST) Person, deren Mitgliedschaft geändert wird
+ *   year       (POST) Jahr, ab dessen 1. Januar die Änderung gilt (aktuelles Jahr oder Folgejahr)
+ *   type       (POST) mode=change: Kürzel der neuen Mitgliedsart, leer = kein Mitglied
+ *   role       (POST) mode=addfee: konfigurierter Name der optionalen Beitragsrolle
  */
 
 use Admidio\Infrastructure\Exception;
@@ -61,7 +63,7 @@ try {
         throw new Exception('SYS_NO_RIGHTS');
     }
 
-    $getMode = admFuncVariableIsValid($_GET, 'mode', 'string', ['defaultValue' => 'view', 'validValues' => ['view', 'change']]);
+    $getMode = admFuncVariableIsValid($_GET, 'mode', 'string', ['defaultValue' => 'view', 'validValues' => ['view', 'change', 'addfee']]);
 
     $context = AdmidioContext::fromGlobals();
     $pluginUrl = ADMIDIO_URL . FOLDER_PLUGINS . '/' . basename(__DIR__) . '/index.php';
@@ -73,9 +75,9 @@ try {
     $editableYears = [$currentYear, $currentYear + 1];
 
     // ----------------------------------------------------------------------
-    // Änderung der Mitgliedsart (POST per fetch, Antwort als JSON)
+    // Änderung der Mitgliedsart oder Zusatzbeitrag hinzufügen (POST per fetch, Antwort als JSON)
     // ----------------------------------------------------------------------
-    if ($getMode === 'change') {
+    if ($getMode !== 'view') {
         try {
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 throw new RuntimeException('Änderungen sind nur per POST möglich.');
@@ -87,25 +89,32 @@ try {
 
             $postUserUuid = admFuncVariableIsValid($_POST, 'user_uuid', 'uuid', ['requireValue' => true]);
             $postYear = admFuncVariableIsValid($_POST, 'year', 'int', ['requireValue' => true]);
-            $postType = admFuncVariableIsValid($_POST, 'type', 'string');
 
             if (!in_array($postYear, $editableYears, true)) {
                 throw new RuntimeException('Änderungen sind nur für das aktuelle Jahr und das Folgejahr möglich.');
-            }
-            $newType = null;
-            if ($postType !== '') {
-                $newType = $config->getType($postType);
-                if ($newType === null) {
-                    throw new RuntimeException('Unbekannte Mitgliedsart „' . $postType . '“.');
-                }
             }
             $user = $loader->loadUser($postUserUuid);
             if ($user === null) {
                 throw new RuntimeException('Die Person wurde nicht gefunden.');
             }
-
             $changer = new MembershipChanger($context, $config, $loader, $history);
-            $operations = $changer->change($user, $postYear, $newType);
+
+            if ($getMode === 'addfee') {
+                $postRole = admFuncVariableIsValid($_POST, 'role', 'string', ['requireValue' => true]);
+                $operations = $changer->addFee($user, $postYear, $postRole);
+                $message = $operations === 0 ? 'Der Zusatzbeitrag ist bereits vorhanden.' : 'Zusatzbeitrag gespeichert.';
+            } else {
+                $postType = admFuncVariableIsValid($_POST, 'type', 'string');
+                $newType = null;
+                if ($postType !== '') {
+                    $newType = $config->getType($postType);
+                    if ($newType === null) {
+                        throw new RuntimeException('Unbekannte Mitgliedsart „' . $postType . '“.');
+                    }
+                }
+                $operations = $changer->change($user, $postYear, $newType);
+                $message = $operations === 0 ? 'Keine Änderung notwendig.' : 'Mitgliedsart gespeichert.';
+            }
 
             // neuen Stand der änderbaren Jahre zurückgeben, damit die Anzeige ohne Neuladen stimmt
             $user = $loader->loadUser($postUserUuid) ?? $user;
@@ -117,7 +126,7 @@ try {
             }
             admHistorySendJson([
                 'status'  => 'ok',
-                'message' => $operations === 0 ? 'Keine Änderung notwendig.' : 'Mitgliedsart gespeichert.',
+                'message' => $message,
                 'years'   => $years,
                 'fees'    => $fees,
             ]);
@@ -173,7 +182,7 @@ try {
         $years,
         $editableYears,
         $canEdit,
-        $pluginUrl . '?mode=change',
+        $pluginUrl,
         $gCurrentSession->getCsrfToken()
     );
 

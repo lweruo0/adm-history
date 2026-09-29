@@ -75,6 +75,66 @@ final class MembershipChanger
 
         $existing = $this->withoutUntouchedOneTimeFees($user['memberships'], $targetRoleIds, $effectiveDate);
         $operations = $this->planner->plan($existing, $stopRoleIds, $targetRoleIds, $effectiveDate);
+
+        return $this->apply($user, $operations);
+    }
+
+    /**
+     * Fügt einer Person ab dem 1. Januar des Jahres einen Zusatzbeitrag (optionale Beitragsrolle)
+     * hinzu. Erlaubt sind nur optionale Beitragsrollen der Mitgliedsart, die die Person am 31.12.
+     * des Jahres hat. Einmalige Beitragsrollen enden am 31. Dezember desselben Jahres, alle anderen
+     * laufen offen weiter.
+     *
+     * @param array<string, mixed> $user     Person aus HistoryLoader::loadUser()
+     * @param int                  $year     Jahr, ab dessen 1. Januar der Beitrag gilt
+     * @param string               $roleName konfigurierter Name der optionalen Beitragsrolle
+     * @return int Anzahl der ausgeführten Datenbankoperationen (0 = bereits vorhanden)
+     * @throws RuntimeException bei unpassender Rolle, fehlenden Rechten oder Fehlern beim Speichern
+     */
+    public function addFee(array $user, int $year, string $roleName): int
+    {
+        $effectiveDate = sprintf('%04d-01-01', $year);
+
+        $currentKey = $this->history->yearState($user['periods'], $year)['value'];
+        $currentType = $this->config->getType($currentKey);
+        if ($currentType === null) {
+            throw new RuntimeException('Ohne Mitgliedsart im Jahr ' . $year . ' kann kein Zusatzbeitrag hinzugefügt werden.');
+        }
+        // Der Name kommt aus dem Formular und kann von Admidio HTML-kodiert worden sein (z. B. „>“)
+        $wanted = mb_strtolower(trim(html_entity_decode($roleName, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        $configuredName = null;
+        foreach ($currentType->optionalFeeRoles as $candidate) {
+            if (mb_strtolower($candidate) === $wanted) {
+                $configuredName = $candidate;
+                break;
+            }
+        }
+        if ($configuredName === null) {
+            throw new RuntimeException('„' . $roleName . '“ ist kein Zusatzbeitrag der Mitgliedsart „' . $currentType->label() . '“.');
+        }
+        $roleName = $configuredName;
+
+        $role = $this->loader->getRoles()[$roleName] ?? null;
+        if ($role === null) {
+            throw new RuntimeException('Rolle „' . $roleName . '“ ist nicht konfiguriert.');
+        }
+        $maxEnd = $role->isOneTimeFee() ? sprintf('%04d-12-31', $year) : null;
+
+        $operations = $this->planner->plan($user['memberships'], [], [$role->id], $effectiveDate, $maxEnd);
+
+        return $this->apply($user, $operations);
+    }
+
+    /**
+     * Prüft die Rechte an allen betroffenen Rollen und führt die Operationen in einer Transaktion aus.
+     *
+     * @param array<string, mixed>             $user
+     * @param array<int, array<string, mixed>> $operations
+     * @return int Anzahl der ausgeführten Operationen
+     * @throws RuntimeException
+     */
+    private function apply(array $user, array $operations): int
+    {
         if ($operations === []) {
             return 0;
         }

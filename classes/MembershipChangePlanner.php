@@ -35,12 +35,15 @@ final class MembershipChangePlanner
      * @param int[]  $stopRoleIds   Rollen, die ab dem Stichtag nicht mehr gelten sollen
      * @param int[]  $targetRoleIds Rollen, die ab dem Stichtag gelten sollen
      * @param string $effectiveDate Stichtag im Format Y-m-d
+     * @param string|null $maxEnd  spätestes Ende neuer oder verlängerter Mitgliedschaften (Y-m-d), z. B.
+     *                             der 31.12. des Stichtagsjahres für einmalige Beiträge; null = unbegrenzt
      * @return array<int, array<string, mixed>> Operationen in Ausführungsreihenfolge
      */
-    public function plan(array $existing, array $stopRoleIds, array $targetRoleIds, string $effectiveDate): array
+    public function plan(array $existing, array $stopRoleIds, array $targetRoleIds, string $effectiveDate, ?string $maxEnd = null): array
     {
         $stopRoleIds = array_values(array_diff($stopRoleIds, $targetRoleIds));
         $dayBefore = self::previousDay($effectiveDate);
+        $cap = static fn(string $end): string => $maxEnd !== null && $end > $maxEnd ? $maxEnd : $end;
         $operations = [];
 
         // 1. Rollen beenden; das späteste Ende bleibt für die neuen Mitgliedschaften erhalten
@@ -83,19 +86,19 @@ final class MembershipChangePlanner
             if ($covering !== null) {
                 // bestehende Mitgliedschaft nur verlängern, wenn sie kürzer läuft als die beendete
                 $end = $covering['end'];
-                if ($newEnd !== null && $newEnd > $end) {
-                    $end = $newEnd;
+                if ($newEnd !== null && $cap($newEnd) > $end) {
+                    $end = $cap($newEnd);
                     $operations[] = ['action' => 'update', 'mem_id' => $covering['mem_id'], 'begin' => $covering['begin'], 'end' => $end];
                 }
             } elseif ($adjacent !== null) {
-                $end = $newEnd ?? YearHistory::OPEN_END;
+                $end = $cap($newEnd ?? YearHistory::OPEN_END);
                 $operations[] = ['action' => 'update', 'mem_id' => $adjacent['mem_id'], 'begin' => $adjacent['begin'], 'end' => $end];
             } elseif ($future !== []) {
                 $first = array_shift($future);
-                $end = $newEnd === null ? $first['end'] : max($first['end'], $newEnd);
+                $end = $cap($newEnd === null ? $first['end'] : max($first['end'], $newEnd));
                 $operations[] = ['action' => 'update', 'mem_id' => $first['mem_id'], 'begin' => $effectiveDate, 'end' => $end];
             } else {
-                $end = $newEnd ?? YearHistory::OPEN_END;
+                $end = $cap($newEnd ?? YearHistory::OPEN_END);
                 $operations[] = ['action' => 'insert', 'rol_id' => $roleId, 'begin' => $effectiveDate, 'end' => $end];
             }
 

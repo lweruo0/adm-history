@@ -184,6 +184,26 @@ final class MembershipChangePlannerTest extends TestCase
         ], $operations);
     }
 
+    public function testMaxEndLimitsNewAndContinuedMemberships(): void
+    {
+        // Zusatzbeitrag (Rolle 5) einmalig für 2027: neue Mitgliedschaft endet am 31.12.2027
+        self::assertSame(
+            [['action' => 'insert', 'rol_id' => 5, 'begin' => '2027-01-01', 'end' => '2027-12-31']],
+            $this->planner->plan([], [], [5], '2027-01-01', '2027-12-31')
+        );
+
+        // eine am Vortag endende Mitgliedschaft wird nur bis zum 31.12.2027 fortgesetzt
+        $existing = [self::membership(1, 5, '2026-01-01', '2026-12-31')];
+        self::assertSame(
+            [['action' => 'update', 'mem_id' => 1, 'begin' => '2026-01-01', 'end' => '2027-12-31']],
+            $this->planner->plan($existing, [], [5], '2027-01-01', '2027-12-31')
+        );
+
+        // eine bereits laufende Mitgliedschaft bleibt unverändert
+        $existing = [self::membership(1, 5, '2026-01-01')];
+        self::assertSame([], $this->planner->plan($existing, [], [5], '2027-01-01', '2027-12-31'));
+    }
+
     public function testPreviousDay(): void
     {
         self::assertSame('2025-12-31', MembershipChangePlanner::previousDay('2026-01-01'));
