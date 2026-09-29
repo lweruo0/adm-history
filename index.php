@@ -8,6 +8,8 @@
  * geändert werden; der Wechsel gilt ab dem 1. Januar des jeweiligen Jahres.
  *
  * Parameter:
+ *   status     (GET)  Filter nach aktueller Mitgliedschaft: „active“ (heute Mitglied, Standard),
+ *                     „former“ (früher Mitglied, heute nicht mehr) oder „all“
  *   years      (GET)  Anzahl der Jahre vor dem aktuellen Jahr (0 = alle); Standard aus mitgliedsarten.php
  *   mode       (GET)  „change“ für die Änderung per fetch() (POST, Antwort als JSON), sonst Übersicht
  *   user_uuid  (POST) Person, deren Mitgliedsart geändert wird
@@ -128,6 +130,10 @@ try {
     if ($getYears < 0) {
         $getYears = 0;
     }
+    $getStatus = admFuncVariableIsValid($_GET, 'status', 'string', [
+        'defaultValue' => HistoryTableRenderer::STATUS_ACTIVE,
+        'validValues'  => HistoryTableRenderer::STATUS_OPTIONS,
+    ]);
 
     $headline = 'Mitglieder-Historie';
     $gNavigation->addStartUrl($pluginUrl, $headline, 'bi-clock-history');
@@ -137,6 +143,16 @@ try {
 
     $users = $loader->loadAll();
 
+    // Filter nach aktueller Mitgliedschaft (Stichtag heute)
+    if ($getStatus !== HistoryTableRenderer::STATUS_ALL) {
+        $today = date('Y-m-d');
+        $wantActive = $getStatus === HistoryTableRenderer::STATUS_ACTIVE;
+        $users = array_filter(
+            $users,
+            static fn(array $user): bool => $history->isMemberAtDate($user['periods'], $user['commonPeriods'], $today) === $wantActive
+        );
+    }
+
     // „alle Jahre“: ab der ältesten Mitgliedschaft, auch in den gemeinsamen Rollen
     $allPeriods = array_map(static fn(array $user): array => array_merge($user['periods'], $user['commonPeriods']), $users);
     $firstYear = $getYears === 0 ? ($history->firstYear($allPeriods) ?? $currentYear) : $currentYear - $getYears;
@@ -144,7 +160,7 @@ try {
     $years = range($currentYear + 1, $firstYear); // absteigend
 
     $renderer = new HistoryTableRenderer($context, $config, $history);
-    $renderer->renderToolbar($page, $pluginUrl, $getYears);
+    $renderer->renderToolbar($page, $pluginUrl, $getYears, $getStatus);
     if (!$canEdit) {
         $page->addHtml('<div class="alert alert-secondary" role="alert"><i class="bi bi-eye"></i> Nur Ansicht: Zum Ändern der Mitgliedsart ist das Recht „Rollen zuordnen“ nötig.</div>');
     }

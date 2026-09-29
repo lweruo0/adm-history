@@ -21,6 +21,19 @@ final class HistoryTableRenderer
     /** Auswahlmöglichkeiten für „Jahre zurück“; 0 = alle */
     private const YEAR_OPTIONS = [5, 10, 15, 20, 30, 50, 0];
 
+    /** Filter nach aktueller Mitgliedschaft (GET-Parameter status) */
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_FORMER = 'former';
+    public const STATUS_ALL = 'all';
+    public const STATUS_OPTIONS = [self::STATUS_ACTIVE, self::STATUS_FORMER, self::STATUS_ALL];
+
+    /** Anzeigetexte des Filters in Anzeigereihenfolge */
+    private const STATUS_LABELS = [
+        self::STATUS_ACTIVE => 'Aktive Kontakte',
+        self::STATUS_FORMER => 'Ehemalige Kontakte',
+        self::STATUS_ALL    => 'Alle Kontakte',
+    ];
+
     public function __construct(
         private readonly AdmidioContext $context,
         private readonly MembershipTypeConfig $config,
@@ -29,11 +42,13 @@ final class HistoryTableRenderer
     }
 
     /**
-     * Auswahl „Jahre zurück“ (GET-Parameter years) und Legende der Mitgliedsarten.
+     * Filter nach aktueller Mitgliedschaft (GET-Parameter status), Auswahl „Jahre zurück“
+     * (GET-Parameter years) und Legende der Mitgliedsarten.
      *
-     * @param int $selectedYears aktuell gewählte Anzahl Jahre vor dem aktuellen Jahr (0 = alle)
+     * @param int    $selectedYears  aktuell gewählte Anzahl Jahre vor dem aktuellen Jahr (0 = alle)
+     * @param string $selectedStatus aktuell gewählter Filter (eine der STATUS_*-Konstanten)
      */
-    public function renderToolbar(PagePresenter $page, string $pluginUrl, int $selectedYears): void
+    public function renderToolbar(PagePresenter $page, string $pluginUrl, int $selectedYears, string $selectedStatus): void
     {
         $e = Html::escape(...);
 
@@ -47,10 +62,17 @@ final class HistoryTableRenderer
         $options[] = 0;
 
         $html = '<div class="card admidio-blog mb-4"><div class="card-body">'
-            . '<form method="get" action="' . $e($pluginUrl) . '" id="adm_history_years_form" class="row g-2 align-items-end">'
+            . '<form method="get" action="' . $e($pluginUrl) . '" id="adm_history_filter_form" class="row g-2 align-items-end">'
+            . '<div class="col-12 col-sm-auto">'
+            . '<label for="adm_history_status" class="form-label fw-bold">Kontakte</label>'
+            . '<select class="form-select adm-history-filter" id="adm_history_status" name="status">';
+        foreach (self::STATUS_LABELS as $status => $label) {
+            $html .= '<option value="' . $status . '"' . ($status === $selectedStatus ? ' selected' : '') . '>' . $e($label) . '</option>';
+        }
+        $html .= '</select></div>'
             . '<div class="col-12 col-sm-auto">'
             . '<label for="adm_history_years" class="form-label fw-bold">Jahre zurück</label>'
-            . '<select class="form-select" id="adm_history_years" name="years">';
+            . '<select class="form-select adm-history-filter" id="adm_history_years" name="years">';
         foreach ($options as $years) {
             $html .= '<option value="' . $years . '"' . ($years === $selectedYears ? ' selected' : '') . '>'
                 . ($years === 0 ? 'alle Jahre' : $years . ' Jahre') . '</option>';
@@ -67,13 +89,16 @@ final class HistoryTableRenderer
         $html .= '</div></div>'
             . '<div class="col-12 form-text">Je Jahr stehen alle Mitgliedsarten, in denen die Person in diesem Jahr mindestens einen Tag war. '
             . 'Für das aktuelle Jahr und das Folgejahr zeigt die Auswahl die Mitgliedsart am 31.12.; eine Änderung gilt ab dem 1. Januar '
-            . 'des jeweiligen Jahres. Personen ohne Mitgliedsart im angezeigten Zeitraum werden ausgeblendet.</div>'
+            . 'des jeweiligen Jahres. „Aktive Kontakte“ sind heute in einer der konfigurierten Rollen, „Ehemalige Kontakte“ waren es früher. '
+            . 'Personen ohne Mitgliedsart im angezeigten Zeitraum werden ausgeblendet.</div>'
             . '</form></div></div>';
 
         $page->addHtml($html);
         $page->addJavascript('
-            document.getElementById("adm_history_years").addEventListener("change", function () {
-                document.getElementById("adm_history_years_form").submit();
+            document.querySelectorAll("#adm_history_filter_form .adm-history-filter").forEach(function (select) {
+                select.addEventListener("change", function () {
+                    document.getElementById("adm_history_filter_form").submit();
+                });
             });', true);
     }
 

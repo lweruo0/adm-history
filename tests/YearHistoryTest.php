@@ -111,6 +111,20 @@ final class YearHistoryTest extends TestCase
         self::assertFalse($this->history->isMemberWithoutType($periods, [], 2012));
     }
 
+    public function testIsMemberAtDateConsidersTypeAndCommonRoles(): void
+    {
+        $periods = [['type' => 'A', 'begin' => '2015-01-01', 'end' => '2020-06-30']];
+        $common = [['begin' => '2010-05-01', 'end' => '2022-12-31']];
+
+        self::assertFalse($this->history->isMemberAtDate($periods, $common, '2010-04-30'));
+        self::assertTrue($this->history->isMemberAtDate($periods, $common, '2012-01-01'));
+        self::assertTrue($this->history->isMemberAtDate($periods, $common, '2020-06-30'));
+        self::assertTrue($this->history->isMemberAtDate($periods, $common, '2022-12-31'));
+        self::assertFalse($this->history->isMemberAtDate($periods, $common, '2023-01-01'));
+        self::assertFalse($this->history->isMemberAtDate($periods, [], '2021-01-01'));
+        self::assertFalse($this->history->isMemberAtDate([], [], '2021-01-01'));
+    }
+
     public function testYearStateReportsUnknownForMemberWithoutType(): void
     {
         $common = [['begin' => '2020-01-01', 'end' => '9999-12-31']];

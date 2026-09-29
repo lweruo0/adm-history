@@ -46,6 +46,9 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
   in einem Jahr nur in einer gemeinsamen Rolle (`commonRoles`, z. B. „Mitglied“), ohne dass sich eine
   Mitgliedsart ermitteln lässt, zeigt die Spalte `?` (auch neben der Auswahl im aktuellen Jahr und
   Folgejahr). Sortierbar ist die Tabelle nur nach Vor- und Nachname.
+- **Kontakte**: Auswahl über der Tabelle, welche Personen erscheinen: „Aktive Kontakte“ (Standard)
+  sind heute in einer Rolle einer Mitgliedsart oder in einer gemeinsamen Rolle, „Ehemalige Kontakte“
+  waren es früher, sind es heute aber nicht mehr, „Alle Kontakte“ zeigt beide.
 - **Jahre zurück**: Auswahl über der Tabelle, wie viele Jahre vor dem aktuellen Jahr angezeigt
   werden (Standard aus `mitgliedsarten.php`, „alle Jahre“ ab der ältesten Mitgliedschaft, auch in
   den gemeinsamen Rollen). Personen ohne Mitgliedsart und ohne `?` im angezeigten Zeitraum werden

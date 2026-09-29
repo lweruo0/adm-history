@@ -83,6 +83,25 @@ final class YearHistory
     }
 
     /**
+     * Ist die Person am Stichtag Mitglied, d. h. in einer Rolle einer Mitgliedsart oder in einer
+     * gemeinsamen Rolle? Grundlage des Filters „Aktive/Ehemalige Kontakte“.
+     *
+     * @param array<int, array{type:string, begin:string, end:string}> $periods       Zeiträume je Mitgliedsart
+     * @param array<int, array{begin:string, end:string}>              $commonPeriods Zeiträume in den gemeinsamen Rollen
+     * @param string                                                   $date          Stichtag (Y-m-d)
+     */
+    public function isMemberAtDate(array $periods, array $commonPeriods, string $date): bool
+    {
+        foreach (array_merge($periods, $commonPeriods) as $period) {
+            if ($period['begin'] <= $date && $period['end'] >= $date) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * War die Person im Jahr Mitglied (gemeinsame Rolle, z. B. „Mitglied“), ohne dass sich eine
      * Mitgliedsart ermitteln lässt? Solche Jahre werden in der Tabelle mit „?“ gekennzeichnet.
      *
