@@ -66,7 +66,10 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
   hat. Nach der Rückfrage beginnt die Beitragsrolle am 1. Januar des Jahres (eine am Vortag endende
   Mitgliedschaft wird fortgesetzt); einmalige Beitragsrollen enden am 31. Dezember desselben
   Jahres, alle anderen laufen offen weiter. Ohne Mitgliedsart im Jahr ist kein Zusatzbeitrag
-  möglich. Entfernen geht wie bisher über die Rollenverwaltung von Admidio.
+  möglich.
+- **Zusatzbeitrag entfernen**: Mit dem Recht zum Ändern trägt jedes Kürzel in der Spalte „Zusatz“
+  ein `×`. Nach der Rückfrage endet die Beitragsrolle am 31. Dezember des Vorjahres; eine erst an
+  oder nach dem 1. Januar des Jahres begonnene Mitgliedschaft wird gelöscht.
 - **Wechsel**: Eine andere Mitgliedsart auswählen und die Rückfrage bestätigen. Die Auswahl bietet
   nur die in `mitgliedsarten.php` (`transitions`) erlaubten Ziele an, einschließlich Austritt (`–`);
   ohne erlaubtes Ziel ist sie gesperrt. Der Wechsel gilt ab dem 1. Januar des gewählten Jahres:
@@ -129,7 +132,7 @@ Ohne Composer: `php tools/lint.php` und `php phpunit.phar` (Phar von https://pha
 ## Aufbau
 
 ```
-index.php                          Controller: Rechte, Übersicht, Änderungen per fetch (mode=change, mode=addfee, JSON)
+index.php                          Controller: Rechte, Übersicht, Änderungen per fetch (mode=change, addfee, removefee; JSON)
 mitgliedsarten.php                 Konfiguration der Mitgliedsarten (Kürzel, Name, Farbe, Rollen), gemeinsame Rollen
 composer.json, phpunit.xml         Entwicklung (PHPUnit, PHPStan, Skripte lint/test/stan/check)
 phpstan.neon, stubs/admidio.php    PHPStan-Konfiguration und Admidio-Signaturen für die Analyse

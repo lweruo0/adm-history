@@ -100,29 +100,76 @@ final class MembershipChanger
         if ($currentType === null) {
             throw new RuntimeException('Ohne Mitgliedsart im Jahr ' . $year . ' kann kein Zusatzbeitrag hinzugefügt werden.');
         }
-        // Der Name kommt aus dem Formular und kann von Admidio HTML-kodiert worden sein (z. B. „>“)
-        $wanted = mb_strtolower(trim(html_entity_decode($roleName, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
-        $configuredName = null;
-        foreach ($currentType->optionalFeeRoles as $candidate) {
-            if (mb_strtolower($candidate) === $wanted) {
-                $configuredName = $candidate;
-                break;
-            }
-        }
+        $configuredName = $this->matchRoleName($roleName, $currentType->optionalFeeRoles);
         if ($configuredName === null) {
             throw new RuntimeException('„' . $roleName . '“ ist kein Zusatzbeitrag der Mitgliedsart „' . $currentType->label() . '“.');
         }
-        $roleName = $configuredName;
 
-        $role = $this->loader->getRoles()[$roleName] ?? null;
-        if ($role === null) {
-            throw new RuntimeException('Rolle „' . $roleName . '“ ist nicht konfiguriert.');
-        }
+        $role = $this->feeRole($configuredName);
         $maxEnd = $role->isOneTimeFee() ? sprintf('%04d-12-31', $year) : null;
 
         $operations = $this->planner->plan($user['memberships'], [], [$role->id], $effectiveDate, $maxEnd);
 
         return $this->apply($user, $operations);
+    }
+
+    /**
+     * Entfernt einen Zusatzbeitrag (optionale Beitragsrolle) einer Person ab dem 1. Januar des
+     * Jahres: eine vorher begonnene Mitgliedschaft endet am 31. Dezember des Vorjahres, eine erst
+     * an oder nach dem Stichtag beginnende wird gelöscht.
+     *
+     * @param array<string, mixed> $user     Person aus HistoryLoader::loadUser()
+     * @param int                  $year     Jahr, ab dessen 1. Januar der Beitrag entfällt
+     * @param string               $roleName konfigurierter Name der optionalen Beitragsrolle
+     * @return int Anzahl der ausgeführten Datenbankoperationen (0 = nichts zu entfernen)
+     * @throws RuntimeException bei unbekannter Rolle, fehlenden Rechten oder Fehlern beim Speichern
+     */
+    public function removeFee(array $user, int $year, string $roleName): int
+    {
+        $effectiveDate = sprintf('%04d-01-01', $year);
+
+        $configuredName = $this->matchRoleName($roleName, $this->config->getOptionalFeeRoleNames());
+        if ($configuredName === null) {
+            throw new RuntimeException('„' . $roleName . '“ ist kein konfigurierter Zusatzbeitrag.');
+        }
+
+        $role = $this->feeRole($configuredName);
+        $operations = $this->planner->plan($user['memberships'], [$role->id], [], $effectiveDate);
+
+        return $this->apply($user, $operations);
+    }
+
+    /**
+     * Sucht einen Rollennamen aus dem Formular in einer Liste konfigurierter Namen. Der Wert kann
+     * von Admidio HTML-kodiert worden sein (z. B. „>“), daher wird dekodiert und ohne Beachtung
+     * der Groß-/Kleinschreibung verglichen.
+     *
+     * @param string[] $candidates
+     * @return string|null der konfigurierte Name oder null
+     */
+    private function matchRoleName(string $roleName, array $candidates): ?string
+    {
+        $wanted = mb_strtolower(trim(html_entity_decode($roleName, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        foreach ($candidates as $candidate) {
+            if (mb_strtolower($candidate) === $wanted) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @throws RuntimeException wenn die Rolle nicht aufgelöst werden kann
+     */
+    private function feeRole(string $roleName): RoleRef
+    {
+        $role = $this->loader->getRoles()[$roleName] ?? null;
+        if ($role === null) {
+            throw new RuntimeException('Rolle „' . $roleName . '“ ist nicht konfiguriert.');
+        }
+
+        return $role;
     }
 
     /**

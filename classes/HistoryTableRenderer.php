@@ -167,6 +167,9 @@ final class HistoryTableRenderer
             .adm-history-fee { display: inline-block; padding: 0 .3em; margin: 0 1px; border-radius: .25rem; line-height: 1.3;
                 font-size: .85em; background-color: #f8f9fa; color: #212529; border: 1px solid rgba(0,0,0,.15); }
             #' . self::TABLE_ID . ' td.adm-history-fees { text-align: left; }
+            .adm-history-fee-remove { border: 0; background: none; padding: 0 0 0 .3em; margin: 0; line-height: 1;
+                font-size: 1.1em; color: #6c757d; cursor: pointer; vertical-align: baseline; }
+            .adm-history-fee-remove:hover { color: #dc3545; }
             .adm-history-select { min-width: 4.5em; padding-top: 0; padding-bottom: 0; line-height: 1.3; font-weight: 600; }
             #' . self::TABLE_ID . ' td, #' . self::TABLE_ID . ' th { white-space: nowrap; padding: .1rem .4rem; line-height: 1.3; vertical-align: middle; }
             #' . self::TABLE_ID . ' td.adm-history-year { text-align: center; }
@@ -256,7 +259,7 @@ final class HistoryTableRenderer
         $name = trim($user['first_name'] . ' ' . $user['last_name']);
 
         $html = '<td class="adm-history-fees" data-user="' . $e($user['usr_uuid']) . '" data-year="' . $year . '">'
-            . '<span class="adm-history-fee-list">' . $this->feeBadges($roleNames) . '</span>';
+            . '<span class="adm-history-fee-list">' . $this->feeBadges($roleNames, $canEdit) . '</span>';
         if ($canEdit) {
             $type = $this->config->getType($typeKey);
             $options = $type === null ? [] : array_values(array_diff($type->optionalFeeRoles, $roleNames));
@@ -273,12 +276,20 @@ final class HistoryTableRenderer
         return $html . '</td>';
     }
 
-    /** @param string[] $roleNames */
-    private function feeBadges(array $roleNames): string
+    /**
+     * Kürzel der Zusatzbeiträge; mit Änderungsrecht trägt jedes ein „×“ zum Entfernen.
+     * @param string[] $roleNames
+     */
+    private function feeBadges(array $roleNames, bool $removable): string
     {
         $html = '';
         foreach ($roleNames as $roleName) {
-            $html .= '<span class="adm-history-fee">' . Html::escape($roleName) . '</span>';
+            $html .= '<span class="adm-history-fee">' . Html::escape($roleName);
+            if ($removable) {
+                $html .= '<button type="button" class="adm-history-fee-remove" data-role="' . Html::escape($roleName) . '"'
+                    . ' title="Zusatzbeitrag „' . Html::escape($roleName) . '“ entfernen" aria-label="Zusatzbeitrag entfernen">&times;</button>';
+            }
+            $html .= '</span>';
         }
 
         return $html;
@@ -350,8 +361,9 @@ final class HistoryTableRenderer
             ];
         }
         $settings = json_encode([
-            'changeUrl'   => $pluginUrl . '?mode=change',
-            'addFeeUrl'   => $pluginUrl . '?mode=addfee',
+            'changeUrl'    => $pluginUrl . '?mode=change',
+            'addFeeUrl'    => $pluginUrl . '?mode=addfee',
+            'removeFeeUrl' => $pluginUrl . '?mode=removefee',
             'csrf'        => $csrfToken,
             'types'       => $types,
             'transitions' => $this->config->getAllTransitions(),
@@ -403,15 +415,26 @@ final class HistoryTableRenderer
                 // Zelle „Zusatz“ neu füllen: vorhandene Beitragsrollen des Jahres und die
                 // Auswahl „+“ mit den noch fehlenden Zusatzbeiträgen der Mitgliedsart
                 function updateFees(cell, roleNames, typeKey) {
+                    var add = cell.querySelector(".adm-history-fee-add");
                     var list = cell.querySelector(".adm-history-fee-list");
                     list.innerHTML = "";
                     roleNames.forEach(function (roleName) {
                         var badge = document.createElement("span");
                         badge.className = "adm-history-fee";
                         badge.textContent = roleName;
+                        if (add) {
+                            // mit Änderungsrecht (Auswahl „+“ vorhanden) auch „×“ zum Entfernen
+                            var remove = document.createElement("button");
+                            remove.type = "button";
+                            remove.className = "adm-history-fee-remove";
+                            remove.dataset.role = roleName;
+                            remove.title = "Zusatzbeitrag „" + roleName + "“ entfernen";
+                            remove.setAttribute("aria-label", "Zusatzbeitrag entfernen");
+                            remove.innerHTML = "&times;";
+                            badge.appendChild(remove);
+                        }
                         list.appendChild(badge);
                     });
-                    var add = cell.querySelector(".adm-history-fee-add");
                     if (!add) {
                         return;
                     }
@@ -530,6 +553,32 @@ final class HistoryTableRenderer
                         })
                         .finally(function () {
                             select.disabled = false;
+                        });
+                });
+
+                // Zusatzbeitrag entfernen („×“ am Kürzel in der Spalte „Zusatz“)
+                table.addEventListener("click", function (event) {
+                    var button = event.target.closest(".adm-history-fee-remove");
+                    if (!button) {
+                        return;
+                    }
+                    var cell = button.closest(".adm-history-fees");
+                    var roleName = button.dataset.role;
+                    var add = cell.querySelector(".adm-history-fee-add");
+                    var name = add ? add.dataset.name : "";
+                    var question = name + ": Zusatzbeitrag „" + roleName + "“ ab 01.01." + cell.dataset.year + " entfernen?";
+                    if (!window.confirm(question)) {
+                        return;
+                    }
+
+                    button.disabled = true;
+                    post(settings.removeFeeUrl, {user_uuid: cell.dataset.user, year: cell.dataset.year, role: roleName})
+                        .then(function (data) {
+                            applyResponse(cell.dataset.user, data);
+                        })
+                        .catch(function (error) {
+                            button.disabled = false;
+                            window.alert("Der Zusatzbeitrag wurde nicht entfernt: " + error.message);
                         });
                 });
             })();', true);

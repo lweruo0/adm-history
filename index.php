@@ -11,12 +11,13 @@
  *   status     (GET)  Filter nach aktueller Mitgliedschaft: „active“ (heute Mitglied, Standard),
  *                     „former“ (früher Mitglied, heute nicht mehr) oder „all“
  *   years      (GET)  Anzahl der Jahre vor dem aktuellen Jahr (0 = alle); Standard aus mitgliedsarten.php
- *   mode       (GET)  „change“ für die Änderung der Mitgliedsart, „addfee“ für einen Zusatzbeitrag
- *                     (beide per fetch(), POST, Antwort als JSON), sonst Übersicht
+ *   mode       (GET)  „change“ für die Änderung der Mitgliedsart, „addfee“ / „removefee“ zum
+ *                     Hinzufügen / Entfernen eines Zusatzbeitrags (alle per fetch(), POST, Antwort
+ *                     als JSON), sonst Übersicht
  *   user_uuid  (POST) Person, deren Mitgliedschaft geändert wird
  *   year       (POST) Jahr, ab dessen 1. Januar die Änderung gilt (aktuelles Jahr oder Folgejahr)
  *   type       (POST) mode=change: Kürzel der neuen Mitgliedsart, leer = kein Mitglied
- *   role       (POST) mode=addfee: konfigurierter Name der optionalen Beitragsrolle
+ *   role       (POST) mode=addfee / removefee: konfigurierter Name der optionalen Beitragsrolle
  */
 
 use Admidio\Infrastructure\Exception;
@@ -63,7 +64,7 @@ try {
         throw new Exception('SYS_NO_RIGHTS');
     }
 
-    $getMode = admFuncVariableIsValid($_GET, 'mode', 'string', ['defaultValue' => 'view', 'validValues' => ['view', 'change', 'addfee']]);
+    $getMode = admFuncVariableIsValid($_GET, 'mode', 'string', ['defaultValue' => 'view', 'validValues' => ['view', 'change', 'addfee', 'removefee']]);
 
     $context = AdmidioContext::fromGlobals();
     $pluginUrl = ADMIDIO_URL . FOLDER_PLUGINS . '/' . basename(__DIR__) . '/index.php';
@@ -103,6 +104,10 @@ try {
                 $postRole = admFuncVariableIsValid($_POST, 'role', 'string', ['requireValue' => true]);
                 $operations = $changer->addFee($user, $postYear, $postRole);
                 $message = $operations === 0 ? 'Der Zusatzbeitrag ist bereits vorhanden.' : 'Zusatzbeitrag gespeichert.';
+            } elseif ($getMode === 'removefee') {
+                $postRole = admFuncVariableIsValid($_POST, 'role', 'string', ['requireValue' => true]);
+                $operations = $changer->removeFee($user, $postYear, $postRole);
+                $message = $operations === 0 ? 'Der Zusatzbeitrag war nicht vorhanden.' : 'Zusatzbeitrag entfernt.';
             } else {
                 $postType = admFuncVariableIsValid($_POST, 'type', 'string');
                 $newType = null;
