@@ -80,7 +80,7 @@ return [
         'Jugend',
         'Ehren',
         'Förder',
-        'Summe', ['Aktiv', 'Passiv', 'Jugend', 'Ehren', 'Förder'],
+        'Summe' => ['Aktiv', 'Passiv', 'Jugend', 'Ehren', 'Förder'],
         'Mitglied',
     ],
 
