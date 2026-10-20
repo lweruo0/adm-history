@@ -82,6 +82,41 @@ final class MemberCounter
     }
 
     /**
+     * Rollen je Person, in denen sie im Jahr mindestens einen Tag war, in der Reihenfolge des Beginns
+     * (für die Spalte „Rollen“ der Listen).
+     *
+     * @param array<int, array{usr_id:int, rol_id:int, begin:string, end:string}> $periods
+     * @param int[]                                                               $roleIds
+     * @return array<int, int[]> usr_id => Rollen-IDs
+     */
+    public function roleIdsInYearByUser(array $periods, array $roleIds, int $year): array
+    {
+        $yearStart = $year . '-01-01';
+        $yearEnd = $year . '-12-31';
+        $wanted = array_flip($roleIds);
+
+        $firstBegin = [];
+        foreach ($periods as $period) {
+            if (!isset($wanted[$period['rol_id']]) || $period['begin'] > $yearEnd || $period['end'] < $yearStart) {
+                continue;
+            }
+            $begin = max($period['begin'], $yearStart);
+            $current = $firstBegin[$period['usr_id']][$period['rol_id']] ?? null;
+            if ($current === null || $begin < $current) {
+                $firstBegin[$period['usr_id']][$period['rol_id']] = $begin;
+            }
+        }
+
+        $result = [];
+        foreach ($firstBegin as $usrId => $byRole) {
+            asort($byRole);
+            $result[$usrId] = array_keys($byRole);
+        }
+
+        return $result;
+    }
+
+    /**
      * Tabelle eines Jahres: je Zeile die Anzahl der Personen am 1. Januar und am 31. Dezember sowie
      * die Anzahl der Personen mit unterjährigem Ein- oder Austritt (siehe changesInYear).
      *

@@ -9,13 +9,17 @@ namespace AdmHistory;
  * Die Ausgabe entsteht ohne Smarty-Vorlage direkt in PHP, damit Änderungen am Plugin sofort wirken
  * und kein übersetztes Template zwischengespeichert wird. Die Klasse kennt kein Admidio.
  *
+ * Unter der Tabelle stehen die Buttons „Eintritte“ und „Austritte“ für alle Rollen der Kachel
+ * zusammen.
+ *
  * Kachel je Eintrag: key (previous/current/next), year, label (z. B. „Folgejahr“), rows mit
- * label, begin, end, changes (siehe MemberCounter::yearTable()) und url (Link zur Liste oder '').
+ * label, begin, end, changes (siehe MemberCounter::yearTable()) und url (Link zur Liste oder ''),
+ * joined und left jeweils mit count und url (Liste der Eintritte bzw. Austritte).
  */
 final class OverviewTileRenderer
 {
     /**
-     * @param array<int, array{key:string, year:int, label:string, rows:array<int, array{label:string, begin:int, end:int, changes:int, url:string}>}> $tiles
+     * @param array<int, array{key:string, year:int, label:string, rows:array<int, array{label:string, begin:int, end:int, changes:int, url:string}>, joined:array{count:int, url:string}, left:array{count:int, url:string}}> $tiles
      * @param string $pluginName Ordnername des Plugins (für die HTML-IDs)
      * @param string $historyUrl URL der Mitglieder-Historie (Ziel der Überschrift)
      */
@@ -46,10 +50,29 @@ final class OverviewTileRenderer
                     . '<td class="text-end py-0 align-middle">' . $this->changesButton($row, $tile['year']) . '</td>'
                     . '</tr>';
             }
-            $html .= '</tbody></table></div>';
+            $html .= '</tbody></table>'
+                . '<div class="d-flex gap-2 mb-2">'
+                . $this->kindButton('Eintritte', 'bi-box-arrow-in-right', $tile['joined'], $tile['year'])
+                . $this->kindButton('Austritte', 'bi-box-arrow-right', $tile['left'], $tile['year'])
+                . '</div></div>';
         }
 
         return $html;
+    }
+
+    /**
+     * Button „Eintritte“ bzw. „Austritte“ mit Anzahl; ohne Personen inaktiv.
+     * @param array{count:int, url:string} $kind
+     */
+    private function kindButton(string $label, string $icon, array $kind, int $year): string
+    {
+        $text = '<i class="bi ' . $icon . '"></i> ' . $label . ' (' . $kind['count'] . ')';
+        if ($kind['count'] <= 0 || $kind['url'] === '') {
+            return '<span class="btn btn-sm btn-secondary disabled" aria-disabled="true" title="Keine ' . $label . ' ' . $year . '">' . $text . '</span>';
+        }
+
+        return '<a class="btn btn-sm btn-secondary" href="' . Html::escape($kind['url']) . '" target="_blank" rel="noopener" title="'
+            . $label . ' ' . $year . ' in neuer Registerkarte anzeigen">' . $text . '</a>';
     }
 
     /**
@@ -64,7 +87,7 @@ final class OverviewTileRenderer
         $title = $row['changes'] . ($row['changes'] === 1 ? ' Person' : ' Personen') . ' mit Ein- oder Austritt '
             . $year . ' in „' . $row['label'] . '“ in neuer Registerkarte anzeigen';
 
-        return '<a class="btn btn-sm btn-outline-secondary py-0 px-1" href="' . Html::escape($row['url']) . '" target="_blank" rel="noopener" title="'
+        return '<a class="btn btn-sm btn-secondary py-0 px-1" href="' . Html::escape($row['url']) . '" target="_blank" rel="noopener" title="'
             . Html::escape($title) . '"><i class="bi bi-people"></i> ' . $row['changes'] . '</a>';
     }
 }

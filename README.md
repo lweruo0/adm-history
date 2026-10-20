@@ -158,6 +158,12 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   Eintrittsdatum, ohne Mitgliedschaft am 31. Dezember das Austrittsdatum, bei Ein- und Austritt im
   selben Jahr beides. Bei einer Zeile mit mehreren Rollen zählt ein Wechsel zwischen diesen Rollen
   nicht als Bewegung, ebenso wenig eine Unterbrechung zwischen den Stichtagen.
+- **Buttons „Eintritte“ und „Austritte“**: Unter der Tabelle jeder Kachel, mit der Anzahl in Klammern;
+  ohne Personen sind sie inaktiv. Sie öffnen dieselbe Liste für alle Rollen der Kachel zusammen,
+  gefiltert auf Eintritte (am 1. Januar in keiner der Rollen, im Jahr in mindestens einer) bzw.
+  Austritte (im Jahr in mindestens einer der Rollen, am 31. Dezember in keiner mehr). Ein Wechsel
+  zwischen Rollen der Kachel, z. B. von Passiv zu Aktiv, ist damit weder Ein- noch Austritt. Die
+  Spalte „Rollen“ der Liste nennt die Rollen, in denen die Person im Jahr war.
 
 ## Mitgliedsarten konfigurieren
 

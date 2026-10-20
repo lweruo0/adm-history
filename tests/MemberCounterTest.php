@@ -80,6 +80,15 @@ final class MemberCounterTest extends TestCase
         ], $this->counter->changesInYear($periods, [10], 2024));
     }
 
+    public function testRoleIdsInYearByUserOrderedByBegin(): void
+    {
+        $byUser = $this->counter->roleIdsInYearByUser($this->periods, [10, 11], 2025);
+
+        self::assertSame([1 => [10, 11], 2 => [10], 3 => [11, 10]], $byUser);
+        self::assertSame([1 => [10], 3 => [10]], $this->counter->roleIdsInYearByUser($this->periods, [10], 2026));
+        self::assertSame([], $this->counter->roleIdsInYearByUser($this->periods, [99], 2026));
+    }
+
     public function testYearTableKeepsRowOrderAndLabels(): void
     {
         $rows = ['Aktiv' => [10], 'Passiv' => [11], 'Alle' => [10, 11]];

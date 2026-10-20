@@ -5,9 +5,10 @@
  * Zeigt je Jahr (Vorjahr, aktuelles Jahr, Folgejahr) eine kleine Tabelle, wie viele Personen am
  * 1. Januar und am 31. Dezember in den konfigurierten Rollen („overviewRoles“ in mitgliedsarten.php)
  * waren. Gab es im Jahr Ein- oder Austritte, öffnet ein Button in der vierten Spalte die Liste dieser
- * Personen in einer neuen Registerkarte (mode=changes). Das HTML entsteht ohne Smarty-Vorlage direkt
- * in PHP (OverviewTileRenderer). Eingebunden wird die Datei in der Vorlage system/overview.tpl des
- * Themes:
+ * Personen in einer neuen Registerkarte (mode=changes); unter der Tabelle stehen die Buttons
+ * „Eintritte“ und „Austritte“ für alle Rollen der Kachel zusammen. Das HTML entsteht ohne
+ * Smarty-Vorlage direkt in PHP (OverviewTileRenderer). Eingebunden wird die Datei in der Vorlage
+ * system/overview.tpl des Themes:
  *
  *   {load_admidio_plugin plugin="adm-history" file="overview.php" year="next"}
  *
@@ -24,7 +25,10 @@
  *                sonst Kachel(n); nur beim direkten Aufruf, nicht beim Einbinden
  *   year  (Smarty-Attribut oder GET)  Kachel: „previous“, „current“, „next“ oder „all“ (Standard);
  *                mode=changes: das Jahr als Zahl (Vorjahr bis Folgejahr)
- *   row   (GET)  mode=changes: Position der Zeile in „overviewRoles“ (ab 0)
+ *   row   (GET)  mode=changes: Position der Zeile in „overviewRoles“ (ab 0); -1 oder weggelassen =
+ *                alle Rollen der Kachel
+ *   kind  (GET)  mode=changes: „all“ (Ein- und Austritte, Standard), „joined“ (nur Eintritte) oder
+ *                „left“ (nur Austritte)
  */
 
 use Admidio\Infrastructure\Exception;
@@ -91,18 +95,36 @@ try {
     // Liste der Ein- und Austritte einer Zeile (eigene Seite, aus der Kachel in neuer Registerkarte)
     // ----------------------------------------------------------------------
     if ($getMode === 'changes') {
-        $getRow = admFuncVariableIsValid($_GET, 'row', 'int', ['requireValue' => true]);
+        // row = Zeile in „overviewRoles“ (ab 0); -1 oder weggelassen = alle Rollen der Kachel
+        $getRow = admFuncVariableIsValid($_GET, 'row', 'int', ['defaultValue' => -1]);
         $getListYear = admFuncVariableIsValid($_GET, 'year', 'int', ['requireValue' => true]);
-        if (!isset($overviewRows[$getRow])) {
+        $getKind = admFuncVariableIsValid($_GET, 'kind', 'string', [
+            'defaultValue' => ChangeListRenderer::KIND_ALL,
+            'validValues'  => ChangeListRenderer::KINDS,
+        ]);
+        if ($getRow !== -1 && !isset($overviewRows[$getRow])) {
             throw new RuntimeException('Die Zeile ' . $getRow . ' ist in „overviewRoles“ nicht konfiguriert.');
         }
         if (!in_array($getListYear, $yearNumbers, true)) {
             throw new RuntimeException('Die Liste gibt es nur für Vorjahr, aktuelles Jahr und Folgejahr.');
         }
-        $label = $overviewRows[$getRow]['label'];
-        $roleIds = $rows[$label];
+        if ($getRow === -1) {
+            $label = 'alle Rollen der Kachel';
+            $roleNames = $config->getOverviewRoleNames();
+        } else {
+            $label = $overviewRows[$getRow]['label'];
+            $roleNames = $overviewRows[$getRow]['roles'];
+        }
+        $roleIds = array_values(array_unique(array_map(static fn(string $roleName): int => $roles[$roleName]->id, $roleNames)));
+        if ($roleIds === []) {
+            throw new RuntimeException('Keine Rollen konfiguriert („overviewRoles“ in mitgliedsarten.php).');
+        }
+        $roleNameById = [];
+        foreach ($roleNames as $roleName) {
+            $roleNameById[$roles[$roleName]->id] = $roleName;
+        }
 
-        // Personen mit Namen und allen Mitgliedschaften in den Rollen der Zeile
+        // Personen mit Namen und allen Mitgliedschaften in den Rollen
         $members = $repository->getMembersWithMemberships($roleIds);
         $periods = [];
         $memberByUsrId = [];
@@ -117,20 +139,30 @@ try {
                 ];
             }
         }
+        $roleIdsByUser = $counter->roleIdsInYearByUser($periods, $roleIds, $getListYear);
         $entries = [];
         foreach ($counter->changesInYear($periods, $roleIds, $getListYear) as $change) {
+            // Filter nach Art: Eintritte haben ein Eintrittsdatum, Austritte ein Austrittsdatum
+            if (($getKind === ChangeListRenderer::KIND_JOINED && $change['begin'] === null)
+                || ($getKind === ChangeListRenderer::KIND_LEFT && $change['end'] === null)) {
+                continue;
+            }
             $member = $memberByUsrId[$change['usr_id']];
             $entries[] = [
                 'usr_uuid'   => $member['usr_uuid'],
                 'first_name' => $member['first_name'],
                 'last_name'  => $member['last_name'],
+                'roles'      => array_map(static fn(int $rolId): string => $roleNameById[$rolId], $roleIdsByUser[$change['usr_id']] ?? []),
                 'begin'      => $change['begin'],
                 'end'        => $change['end'],
             ];
         }
 
-        $listPage = PagePresenter::withHtmlIDAndHeadline('adm_history_changes', 'Ein- und Austritte ' . $getListYear . ': ' . $label);
-        (new ChangeListRenderer())->render($listPage, $entries, $label, $overviewRows[$getRow]['roles'], $getListYear);
+        $listPage = PagePresenter::withHtmlIDAndHeadline(
+            'adm_history_changes',
+            ChangeListRenderer::KIND_TITLES[$getKind] . ' ' . $getListYear . ': ' . $label
+        );
+        (new ChangeListRenderer())->render($listPage, $entries, $label, $roleNames, $getListYear, $getKind);
         $listPage->show();
 
         return;
@@ -152,6 +184,8 @@ try {
 
     $periods = $rows === [] ? [] : $repository->getMembershipPeriods(array_merge(...array_values($rows)));
 
+    $allRoleIds = $rows === [] ? [] : array_values(array_unique(array_merge(...array_values($rows))));
+
     $years = $getYear === 'all' ? $yearNumbers : [$getYear => $yearNumbers[$getYear]];
     $tiles = [];
     foreach ($years as $key => $year) {
@@ -163,11 +197,25 @@ try {
                 : '';
             $tableRows[] = $tableRow;
         }
+
+        // Buttons „Eintritte“ und „Austritte“ über alle Rollen der Kachel
+        $changes = $counter->changesInYear($periods, $allRoleIds, $year);
+        $joined = count(array_filter($changes, static fn(array $change): bool => $change['begin'] !== null));
+        $left = count(array_filter($changes, static fn(array $change): bool => $change['end'] !== null));
+
         $tiles[] = [
-            'key'   => $key,
-            'year'  => $year,
-            'label' => $yearOptions[$key],
-            'rows'  => $tableRows,
+            'key'    => $key,
+            'year'   => $year,
+            'label'  => $yearOptions[$key],
+            'rows'   => $tableRows,
+            'joined' => [
+                'count' => $joined,
+                'url'   => $joined > 0 ? SecurityUtils::encodeUrl($overviewUrl, ['mode' => 'changes', 'year' => $year, 'kind' => ChangeListRenderer::KIND_JOINED]) : '',
+            ],
+            'left'   => [
+                'count' => $left,
+                'url'   => $left > 0 ? SecurityUtils::encodeUrl($overviewUrl, ['mode' => 'changes', 'year' => $year, 'kind' => ChangeListRenderer::KIND_LEFT]) : '',
+            ],
         ];
     }
 
