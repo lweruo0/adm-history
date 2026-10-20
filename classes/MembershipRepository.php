@@ -131,6 +131,37 @@ final class MembershipRepository
     }
 
     /**
+     * Lädt alle (auch beendeten) Mitgliedschaften gültiger Personen in den Rollen, ohne Namen;
+     * Grundlage der Zählung in den Übersichtskacheln (MemberCounter).
+     *
+     * @param int[] $roleIds
+     * @return array<int, array{usr_id:int, rol_id:int, begin:string, end:string}>
+     */
+    public function getMembershipPeriods(array $roleIds): array
+    {
+        if ($roleIds === []) {
+            return [];
+        }
+
+        $sql = 'SELECT mem_usr_id, mem_rol_id, mem_begin, mem_end
+                  FROM ' . TBL_MEMBERS . '
+            INNER JOIN ' . TBL_USERS . ' ON usr_id = mem_usr_id
+                 WHERE mem_rol_id IN (' . self::placeholders($roleIds) . ')
+                   AND usr_valid = true';
+        $periods = [];
+        foreach ($this->query($sql, array_values($roleIds)) as $row) {
+            $periods[] = [
+                'usr_id' => (int) $row['mem_usr_id'],
+                'rol_id' => (int) $row['mem_rol_id'],
+                'begin'  => substr((string) $row['mem_begin'], 0, 10),
+                'end'    => substr((string) $row['mem_end'], 0, 10),
+            ];
+        }
+
+        return $periods;
+    }
+
+    /**
      * Führt eine SELECT-Abfrage aus und liefert alle Zeilen als assoziative Arrays.
      * @param array<int, mixed> $params
      * @return array<int, array<string, mixed>>

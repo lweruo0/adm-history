@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 Admidio-5-Plugin „Mitglieder-Historie“ (`adm_plugins/history`): Mitgliedsart je Kalenderjahr für
-alle Personen, Wechsel der Mitgliedsart für aktuelles Jahr und Folgejahr. Fachliche Beschreibung,
+alle Personen, Wechsel der Mitgliedsart für aktuelles Jahr und Folgejahr, dazu Kacheln mit
+Mitgliederzahlen je Rolle für die Admidio-Übersichtsseite (`overview.php`). Fachliche Beschreibung,
 Bedienung und Aufbau stehen in der @README.md und werden hier nicht wiederholt.
 
 Admidio-Quellen:
@@ -31,7 +32,7 @@ Die wichtigsten Regeln daraus, die in diesem Repo gelten:
   Dateien bekommen einen Doc-Block (Doxygen/PHPDoc-Stil) mit Zweck und Parametern.
 - **Dateien**: Kleinbuchstaben mit Unterstrichen (`mitgliedsarten.php`), UTF-8 ohne BOM, LF-Zeilenenden.
   Ausnahme: Klassendateien in `classes/` heißen wie die Klasse (`YearHistory.php`), damit der
-  Autoloader in `index.php` sie findet.
+  Autoloader in `autoload.php` sie findet.
 - **Datenbank**: nur parametrisierte Abfragen über die Admidio-Datenbankklasse (`$gDb`, Platzhalter
   `?` mit Parameter-Array). Nie Werte in SQL-Strings einbauen. Tabellennamen über die
   Konstanten `TBL_*`.
@@ -53,14 +54,15 @@ Die wichtigsten Regeln daraus, die in diesem Repo gelten:
   und Doc-Blöcke verweisen nur darauf). Gelesen und geprüft wird sie ausschließlich über
   `MembershipTypeConfig`; Prüfungen der Konfiguration gehören dorthin, nicht in den Controller.
 - **Admidio-API**: Klassen aus dem Admidio-Kern per `use Admidio\...` einbinden, keine Kopien.
-  Globale Admidio-Variablen (`$gDb`, `$gCurrentUser`, ...) werden nur in `index.php` und
-  `AdmidioContext::fromGlobals()` gelesen; alle anderen Klassen bekommen den `AdmidioContext`
+  Globale Admidio-Variablen (`$gDb`, `$gCurrentUser`, ...) werden nur in `index.php`, `overview.php`
+  und `AdmidioContext::fromGlobals()` gelesen; alle anderen Klassen bekommen den `AdmidioContext`
   übergeben. SQL gehört ausschließlich in `MembershipRepository`; Rollen werden als `RoleRef`
   weitergereicht. Mitgliedschaften werden nur über die Admidio-Entity `Membership` geschrieben
   (`MembershipChanger`), nie per direktem SQL, damit Änderungsprotokoll und Benachrichtigungen
   erhalten bleiben.
 - **Logik ohne Admidio**: Was sich ohne Datenbank berechnen lässt (Jahreslogik in `YearHistory`,
-  Änderungsplanung in `MembershipChangePlanner`, Konfiguration), bleibt frei von Admidio-Klassen
+  Änderungsplanung in `MembershipChangePlanner`, Zählung der Kacheln in `MemberCounter`,
+  Konfiguration), bleibt frei von Admidio-Klassen
   und wird mit PHPUnit getestet. Admidio-gebundene Klassen (`MembershipRepository`,
   `MembershipChanger`, `HistoryTableRenderer`) bleiben dünn und werden im laufenden Admidio geprüft.
 - **Wechsel-Semantik**: Ein Wechsel gilt immer ab dem 1. Januar des gewählten Jahres (nur aktuelles

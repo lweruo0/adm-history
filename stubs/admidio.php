@@ -150,6 +150,29 @@ namespace Admidio\ProfileFields\ValueObjects {
     }
 }
 
+namespace Admidio\Infrastructure\Plugins {
+    /** Basis der Plugins auf der Übersichtsseite: Smarty-Template aus <Plugin>/templates/ rendern */
+    class Overview
+    {
+        public function __construct(string $name)
+        {
+        }
+
+        /** @param array<mixed>|string $value */
+        public function assignTemplateVariable(string $name, array|string $value): void
+        {
+        }
+
+        public function html(string $template): string
+        {
+        }
+
+        public function showHtmlPage(string $template): void
+        {
+        }
+    }
+}
+
 namespace Admidio\UI\Presenter {
     class PagePresenter
     {

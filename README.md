@@ -7,8 +7,13 @@ und „Passiv“) mit eigener Hintergrundfarbe. Für das aktuelle Jahr und das F
 Zeile eine Auswahl, mit der die Mitgliedsart ab dem 1. Januar des jeweiligen Jahres gewechselt
 werden kann.
 
-Welche Admidio-Rollen zu welcher Mitgliedsart gehören, steht in `mitgliedsarten.php` und lässt sich
-dort ohne Programmierung ändern oder erweitern.
+Zusätzlich liefert das Plugin Kacheln für die Admidio-Übersichtsseite: je eine für das Folgejahr,
+das aktuelle Jahr und das Vorjahr mit einer kleinen Tabelle, wie viele Personen am 1. Januar und am
+31. Dezember des Jahres in den konfigurierten Rollen waren (siehe „Kacheln auf der Übersichtsseite
+einbinden“).
+
+Welche Admidio-Rollen zu welcher Mitgliedsart gehören und welche Rollen in den Kacheln gezählt
+werden, steht in `mitgliedsarten.php` und lässt sich dort ohne Programmierung ändern oder erweitern.
 
 ## Installation
 
@@ -16,6 +21,7 @@ dort ohne Programmierung ändern oder erweitern.
 2. `mitgliedsarten.php` an die eigenen Rollen anpassen (siehe unten).
 3. `adm_plugins/history/index.php` als Administrator aufrufen oder wie unten beschrieben im
    Admidio-Menü verlinken.
+4. Optional die Kacheln mit den Mitgliederzahlen in die Übersichtsseite einbinden (siehe unten).
 
 Ansehen dürfen Administratoren und Benutzer mit dem Recht „alle Profile bearbeiten“ oder „Rollen
 zuordnen“. Ändern dürfen Administratoren und Benutzer mit dem Recht „Rollen zuordnen“; zusätzlich
@@ -37,6 +43,49 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
    | Sichtbar für | Rolle `Administrator` |
 
 4. Speichern.
+
+### Kacheln auf der Übersichtsseite einbinden
+
+Die Admidio-Übersichtsseite (Startseite, `modules/overview.php`) wird aus der Smarty-Vorlage
+`system/overview.tpl` des Themes aufgebaut; im mitgelieferten Theme liegt sie unter
+`themes/simple/templates/system/overview.tpl`. Jede Kachel ist dort ein Block aus `<div>`-Elementen
+mit einem `{load_admidio_plugin ...}`-Aufruf, der eine PHP-Datei aus `adm_plugins` einbindet. Das
+Plugin liefert dafür `overview.php`; das Attribut `year` wählt das Jahr der Kachel: `next`
+(Folgejahr), `current` (aktuelles Jahr), `previous` (Vorjahr). Ohne Attribut stehen alle drei
+Tabellen in einer Kachel.
+
+1. `overviewRoles` in `mitgliedsarten.php` festlegen (siehe „Mitgliedsarten konfigurieren“).
+2. Vorlage zum Bearbeiten wählen: Änderungen direkt in `themes/simple/...` gehen beim nächsten
+   Admidio-Update verloren. Besser ein eigenes Theme anlegen (`themes/<mein-theme>/`), die Datei
+   `overview.tpl` nach `themes/<mein-theme>/templates/system/overview.tpl` kopieren und das Theme in
+   den Admidio-Einstellungen (Allgemein → Theme) auswählen; alle übrigen Dateien nimmt Admidio
+   weiterhin aus `simple`.
+3. In `overview.tpl` innerhalb von `<div class="row mb-5">` an der gewünschten Stelle (z. B. nach
+   der Kachel `admidio-plugin-birthday`) je Jahr einen Block ergänzen. `plugin` ist der Ordnername
+   des Plugins in `adm_plugins`:
+
+   ```smarty
+   <div class="admidio-overview-plugin col-sm-6 col-lg-4 col-xl-3" id="admidio-plugin-history-next">
+       <div class="card admidio-card">
+           <div class="card-body">
+               {load_admidio_plugin plugin="history" file="overview.php" year="next"}
+           </div>
+       </div>
+   </div>
+   ```
+
+   Für das aktuelle Jahr und das Vorjahr denselben Block mit `year="current"` bzw.
+   `year="previous"` (und einer anderen `id`, z. B. `admidio-plugin-history-current` und
+   `admidio-plugin-history-previous`) einfügen. Die Reihenfolge der Blöcke bestimmt die
+   Reihenfolge der Kacheln, die Klassen `col-...` die Breite (wie bei den Admidio-Kacheln).
+4. Übersichtsseite neu laden. Smarty übersetzt die geänderte Vorlage automatisch; erscheint die
+   Änderung nicht, den Ordner `adm_my_files/templates/compile` leeren.
+
+Die Zahlen sehen nur angemeldete Administratoren; `overview.php` gibt für alle anderen nichts aus.
+Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` mit
+`{if $validLogin && $currentUser->isAdministrator()}` … `{/if}` umschließen (Beispiel: öffnendes
+`{if ...}` vor dem ersten Kachel-Block, `{/if}` nach dem letzten). Zum Prüfen ohne Vorlagenänderung lässt sich
+`adm_plugins/history/overview.php?year=current` direkt im Browser aufrufen.
 
 ## Bedienung
 
@@ -93,6 +142,13 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
   Fehlermeldung und die Auswahl springt zurück. Die Mitgliedschaften werden über die Admidio-Klassen
   geschrieben, damit Änderungsprotokoll und Benachrichtigungen von Admidio erhalten bleiben.
 - **Profil**: Vor- und Nachname verlinken auf das Profil der Person.
+- **Übersichtskacheln**: Je Kachel (Folgejahr, aktuelles Jahr, Vorjahr) eine Tabelle mit einer Zeile
+  je Eintrag in `overviewRoles` und den Spalten „01.01.“ und „31.12.“: Anzahl der Personen, die am
+  Stichtag in der Rolle (bei mehreren Rollen: in mindestens einer davon) sind, jede Person einmal.
+  Gezählt werden gültige Personen mit Mitgliedschaft, deren Beginn am oder vor und deren Ende am
+  oder nach dem Stichtag liegt; geplante Mitgliedschaften (z. B. Eintritt zum Folgejahr) zählen
+  also am 1. Januar des Folgejahres. Die Überschrift der Kachel verlinkt auf die Mitglieder-Historie.
+  Die Kacheln sehen nur angemeldete Administratoren.
 
 ## Mitgliedsarten konfigurieren
 
@@ -105,6 +161,7 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
 | `mandatoryFeeRoles` | Pflicht-Beitragsrollen je Kürzel (Rolle oder Liste). Beim Wechsel zu der Mitgliedsart werden sie begonnen, beim Wechsel weg von ihr oder beim Austritt beendet. Mitgliedsarten ohne Pflicht-Beitragsrolle können fehlen. Beitragsrollen dürfen keine Rollen einer Mitgliedsart und keine gemeinsamen Rollen sein. |
 | `optionalFeeRoles` | Optionale Beitragsrollen (Zusatzbeiträge) je Kürzel. Sie werden beim Wechsel nicht begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie. Für das aktuelle Jahr und das Folgejahr erscheinen sie in der Spalte „Zusatz“. Rollen mit Beitragszeitraum „einmalig“ gelten nur im Jahr ihres Beginns und werden bei einem Wechsel nicht ins Folgejahr übernommen. Eine Rolle darf bei mehreren Mitgliedsarten stehen, aber nicht zugleich Pflicht und optional derselben Mitgliedsart sein. |
 | `transitions` | Erlaubte Wechsel in der Auswahl: bisheriges Kürzel => neues Kürzel oder Liste neuer Kürzel. `''` steht für „kein Mitglied“ (als Schlüssel: Eintritt, als Ziel: Austritt), `'*'` für alle Ziele. Beibehalten ist immer erlaubt. Fehlt der Schlüssel, ist jeder Wechsel erlaubt; ist er vorhanden, erlaubt ein nicht genanntes bisheriges Kürzel keinen Wechsel (die Auswahl ist dann gesperrt). |
+| `overviewRoles` | Zeilen der Kacheln auf der Übersichtsseite in Anzeigereihenfolge. Ein Eintrag ist ein Rollenname (Beschriftung = Rollenname) oder Beschriftung => Rolle bzw. Liste von Rollen; bei mehreren Rollen zählt jede Person, die in mindestens einer davon ist, einmal. Die Rollen müssen nicht zu einer Mitgliedsart gehören. Fehlt der Schlüssel, zeigt die Kachel einen Hinweis. |
 | `historyYears` | Standard für „Jahre zurück“ (0 = alle Jahre). |
 
 Rollennamen werden ohne Beachtung der Groß-/Kleinschreibung in der aktuellen Organisation gesucht.
@@ -114,8 +171,9 @@ Die mitgelieferte Datei ist zugleich das dokumentierte Beispiel.
 ## Entwicklung: Tests, Lint und PHPStan
 
 Die Tests laufen ohne Admidio und decken die Klassen ohne Admidio-Abhängigkeit ab: Konfiguration
-(`MembershipTypeConfig`), Jahreslogik (`YearHistory`) und Änderungsplanung
-(`MembershipChangePlanner`). `MembershipRepository`, `MembershipChanger` und `HistoryTableRenderer`
+(`MembershipTypeConfig`), Jahreslogik (`YearHistory`), Änderungsplanung
+(`MembershipChangePlanner`) und Zählung der Kacheln (`MemberCounter`). `MembershipRepository`,
+`MembershipChanger` und `HistoryTableRenderer`
 enthalten die Admidio-Aufrufe; Änderungen dort werden im laufenden Admidio geprüft. Für PHPStan sind
 die verwendeten Admidio-Signaturen in `stubs/admidio.php` hinterlegt.
 
@@ -133,7 +191,11 @@ Ohne Composer: `php tools/lint.php` und `php phpunit.phar` (Phar von https://pha
 
 ```
 index.php                          Controller: Rechte, Übersicht, Änderungen per fetch (mode=change, addfee, removefee; JSON)
-mitgliedsarten.php                 Konfiguration der Mitgliedsarten (Kürzel, Name, Farbe, Rollen), gemeinsame Rollen
+overview.php                       Kacheln für die Admidio-Übersichtsseite (load_admidio_plugin, Attribut year)
+autoload.php                       Autoloader für die Klassen in classes/ (von index.php und overview.php eingebunden)
+mitgliedsarten.php                 Konfiguration der Mitgliedsarten (Kürzel, Name, Farbe, Rollen), gemeinsame Rollen, Kacheln
+templates/
+  plugin.history-overview.tpl      Smarty-Vorlage der Kacheln (Tabelle 01.01. / 31.12. je Rolle)
 composer.json, phpunit.xml         Entwicklung (PHPUnit, PHPStan, Skripte lint/test/stan/check)
 phpstan.neon, stubs/admidio.php    PHPStan-Konfiguration und Admidio-Signaturen für die Analyse
 tools/lint.php                     Syntaxprüfung aller PHP-Dateien
@@ -145,6 +207,7 @@ classes/
   MembershipRepository.php         SQL-Zugriff auf Rollen, Personen, Namen und Mitgliedschaften
   HistoryLoader.php                löst die konfigurierten Rollen auf und liefert Zeiträume je Mitgliedsart
   YearHistory.php                  Jahreslogik: Mitgliedsarten je Kalenderjahr und am Jahresende
+  MemberCounter.php                zählt Personen je Rolle am 1. Januar und 31. Dezember (ohne Admidio)
   MembershipChangePlanner.php      berechnet die Datenbankoperationen eines Wechsels (ohne Admidio)
   MembershipChanger.php            prüft Rechte und führt den Wechsel über die Admidio-Entities aus
   HistoryTableRenderer.php         Tabelle mit DataTables, Auswahl und JavaScript für den Wechsel

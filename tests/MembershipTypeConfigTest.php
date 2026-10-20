@@ -62,6 +62,28 @@ final class MembershipTypeConfigTest extends TestCase
 
         self::assertSame([], $config->getCommonRoles());
         self::assertSame(15, $config->getHistoryYears());
+        self::assertSame([], $config->getOverviewRows());
+        self::assertSame([], $config->getOverviewRoleNames());
+    }
+
+    public function testOverviewRolesAcceptRoleNamesAndLabelledRoleGroups(): void
+    {
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), [
+            'overviewRoles' => [
+                'Mitglied',
+                ' Aktiv ',
+                'Nachwuchs' => 'Jugend',
+                'Aktiv + Jugend' => ['Aktiv', 'Jugend', 'Aktiv'],
+            ],
+        ]));
+
+        self::assertSame([
+            ['label' => 'Mitglied',       'roles' => ['Mitglied']],
+            ['label' => 'Aktiv',          'roles' => ['Aktiv']],
+            ['label' => 'Nachwuchs',      'roles' => ['Jugend']],
+            ['label' => 'Aktiv + Jugend', 'roles' => ['Aktiv', 'Jugend']],
+        ], $config->getOverviewRows());
+        self::assertSame(['Mitglied', 'Aktiv', 'Jugend'], $config->getOverviewRoleNames());
     }
 
     public function testShippedConfigurationFileIsValid(): void
@@ -73,6 +95,8 @@ final class MembershipTypeConfigTest extends TestCase
         self::assertTrue($config->isTransitionAllowed('J', 'A'));
         self::assertTrue($config->isTransitionAllowed('A', ''));
         self::assertFalse($config->isTransitionAllowed('A', 'J'));
+        self::assertContains('Mitglied', $config->getOverviewRoleNames());
+        self::assertNotSame([], $config->getOverviewRows());
     }
 
     public function testFeeRolesPerTypeAndInAllRoleNames(): void
@@ -181,6 +205,11 @@ final class MembershipTypeConfigTest extends TestCase
             'transitions unbekannter Ausgang' => [array_merge($base, ['transitions' => ['X' => ['A']]]), 'unbekannte Kürzel „X“'],
             'transitions unbekanntes Ziel'    => [array_merge($base, ['transitions' => ['A' => ['X']]]), 'unbekannte Kürzel „X“'],
             'transitions Ziel kein Text'      => [array_merge($base, ['transitions' => ['A' => [1]]]), 'müssen Kürzel sein'],
+            'overviewRoles kein Array'        => [array_merge($base, ['overviewRoles' => 'Mitglied']), '„overviewRoles“'],
+            'overviewRoles leerer Rollenname' => [array_merge($base, ['overviewRoles' => ['']]), 'Rollenname'],
+            'overviewRoles leere Beschriftung' => [array_merge($base, ['overviewRoles' => [' ' => ['Aktiv']]]), 'leere Beschriftung'],
+            'overviewRoles ohne Rolle'        => [array_merge($base, ['overviewRoles' => ['Alle' => []]]), 'nennt keine Rolle'],
+            'overviewRoles Beschriftung doppelt' => [array_merge($base, ['overviewRoles' => ['Aktiv', 'aktiv' => ['Jugend']]]), 'mehrfach'],
         ];
     }
 

@@ -48,15 +48,7 @@ try {
     // globale Admidio-Variablen aus system/common.php (Deklaration für die statische Analyse)
     global $gValidLogin, $gCurrentUser, $gNavigation, $gCurrentSession;
 
-    spl_autoload_register(static function (string $class): void {
-        $prefix = 'AdmHistory\\';
-        if (str_starts_with($class, $prefix)) {
-            $file = __DIR__ . '/classes/' . substr($class, strlen($prefix)) . '.php';
-            if (is_file($file)) {
-                require_once $file;
-            }
-        }
-    });
+    require_once(__DIR__ . '/autoload.php');
 
     $canEdit = $gValidLogin && ($gCurrentUser->isAdministrator() || $gCurrentUser->checkRolesRight('rol_assign_roles'));
     $canView = $canEdit || ($gValidLogin && $gCurrentUser->checkRolesRight('rol_edit_user'));

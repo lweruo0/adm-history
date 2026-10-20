@@ -69,6 +69,21 @@ return [
         'J' => ['2.Angel'],
     ],
 
+    // Kacheln auf der Admidio-Übersichtsseite (overview.php, Einbindung siehe README): je Zeile die
+    // Anzahl der Personen, die am 1. Januar und am 31. Dezember des Vorjahres, des aktuellen Jahres
+    // und des Folgejahres in der Rolle waren. Eintrag: Rollenname (Beschriftung = Rollenname) oder
+    // Beschriftung => Rolle bzw. Liste von Rollen (Personen in mindestens einer der Rollen, jede
+    // Person nur einmal gezählt). Leer oder weggelassen: die Kachel zeigt einen Hinweis.
+    'overviewRoles' => [
+        'Mitglied',
+        'Aktiv',
+        'Passiv',
+        'Jugend',
+        'Ehren',
+        'Förder',
+        'Aktiv + Jugend' => ['Aktiv', 'Jugend'],
+    ],
+
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).
     // In der Übersicht kann der Zeitraum jederzeit umgestellt werden.
     'historyYears' => 25,

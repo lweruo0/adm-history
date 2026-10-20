@@ -4,6 +4,8 @@ parameters:
         - classes
         - tests
         - index.php
+        - overview.php
+        - autoload.php
         - mitgliedsarten.php
     # Admidio ist zur Analyse nicht installiert; die verwendeten Klassen, Funktionen und
     # Konstanten sind in stubs/admidio.php als Signaturen hinterlegt.

@@ -8,7 +8,7 @@
  */
 
 $root = dirname(__DIR__);
-$files = [$root . '/index.php', $root . '/mitgliedsarten.php'];
+$files = [$root . '/index.php', $root . '/overview.php', $root . '/autoload.php', $root . '/mitgliedsarten.php'];
 foreach (['classes', 'tests', 'tools'] as $dir) {
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root . '/' . $dir, FilesystemIterator::SKIP_DOTS));
     foreach ($iterator as $file) {

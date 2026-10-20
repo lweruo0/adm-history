@@ -29,6 +29,13 @@ final class MembershipTypeConfig
     private ?array $transitions = null;
 
     /**
+     * Zeilen der Übersichtskacheln (overview.php): Beschriftung und Rollen, deren Personen
+     * gezählt werden
+     * @var array<int, array{label:string, roles:string[]}>
+     */
+    private array $overviewRows = [];
+
+    /**
      * @param array<string, mixed> $config Inhalt von mitgliedsarten.php
      * @throws InvalidArgumentException bei ungültiger Konfiguration
      */
@@ -102,6 +109,49 @@ final class MembershipTypeConfig
         if (array_key_exists('transitions', $config)) {
             $this->transitions = $this->transitionList($config['transitions']);
         }
+
+        $this->overviewRows = self::overviewRowList($config['overviewRoles'] ?? []);
+    }
+
+    /**
+     * Prüft „overviewRoles“: Liste von Rollennamen (Beschriftung = Rollenname) oder Beschriftung =>
+     * Rolle bzw. Liste von Rollen (Personen in mindestens einer der Rollen werden einmal gezählt).
+     *
+     * @return array<int, array{label:string, roles:string[]}>
+     * @throws InvalidArgumentException
+     */
+    private static function overviewRowList(mixed $rows): array
+    {
+        if (!is_array($rows)) {
+            throw new InvalidArgumentException('Konfiguration: „overviewRoles“ muss ein Array sein.');
+        }
+        $result = [];
+        $seenLabels = [];
+        foreach ($rows as $key => $roles) {
+            if (is_int($key)) {
+                if (!is_string($roles) || trim($roles) === '') {
+                    throw new InvalidArgumentException('Konfiguration: Einträge von „overviewRoles“ ohne Beschriftung müssen ein Rollenname sein.');
+                }
+                $label = trim($roles);
+                $roles = [$label];
+            } else {
+                $label = trim($key);
+                if ($label === '') {
+                    throw new InvalidArgumentException('Konfiguration: „overviewRoles“ enthält eine leere Beschriftung.');
+                }
+                $roles = self::roleList($roles, '„overviewRoles“ für „' . $label . '“');
+                if ($roles === []) {
+                    throw new InvalidArgumentException('Konfiguration: „overviewRoles“ für „' . $label . '“ nennt keine Rolle.');
+                }
+            }
+            if (isset($seenLabels[mb_strtolower($label)])) {
+                throw new InvalidArgumentException('Konfiguration: Beschriftung „' . $label . '“ kommt in „overviewRoles“ mehrfach vor.');
+            }
+            $seenLabels[mb_strtolower($label)] = true;
+            $result[] = ['label' => $label, 'roles' => $roles];
+        }
+
+        return $result;
     }
 
     /**
@@ -260,6 +310,26 @@ final class MembershipTypeConfig
     public function getHistoryYears(): int
     {
         return $this->historyYears;
+    }
+
+    /**
+     * Zeilen der Übersichtskacheln in konfigurierter Reihenfolge; leer, wenn „overviewRoles“ fehlt.
+     * @return array<int, array{label:string, roles:string[]}>
+     */
+    public function getOverviewRows(): array
+    {
+        return $this->overviewRows;
+    }
+
+    /** @return string[] Alle Rollen der Übersichtskacheln, ohne Doppelte */
+    public function getOverviewRoleNames(): array
+    {
+        $names = [];
+        foreach ($this->overviewRows as $row) {
+            $names = array_merge($names, $row['roles']);
+        }
+
+        return array_values(array_unique($names));
     }
 
     /**
