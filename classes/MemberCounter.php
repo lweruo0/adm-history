@@ -108,6 +108,84 @@ final class MemberCounter
     }
 
     /**
+     * Rollenwechsel eines Jahres: Personen, die sowohl am 31. Dezember des Vorjahres als auch am
+     * 1. Januar des Folgejahres in mindestens einer der Rollen sind, aber nicht in denselben Rollen.
+     * Ein Wechsel zum 1. Januar (alte Rolle endet am 31. Dezember des Vorjahres, neue beginnt am
+     * 1. Januar) zählt damit zum neuen Jahr; ein Hin- und Rückwechsel innerhalb des Jahres nicht.
+     *
+     * Datum des Wechsels: frühester Beginn einer hinzugekommenen Rolle im Jahr, sonst (nur
+     * weggefallene Rollen) spätestes Ende einer weggefallenen Rolle im Jahr.
+     *
+     * @param array<int, array{usr_id:int, rol_id:int, begin:string, end:string}> $periods
+     * @param int[]                                                               $roleIds Rollen in Anzeigereihenfolge
+     * @return array<int, array{usr_id:int, before:int[], after:int[], date:string}> before/after = Rollen-IDs an
+     *                                                                              den Stichtagen in der Reihenfolge von $roleIds
+     */
+    public function roleChangesInYear(array $periods, array $roleIds, int $year): array
+    {
+        $yearStart = $year . '-01-01';
+        $yearEnd = $year . '-12-31';
+        $dayBefore = ($year - 1) . '-12-31';
+        $dayAfter = ($year + 1) . '-01-01';
+        $position = array_flip(array_values($roleIds));
+
+        $byUser = [];
+        foreach ($periods as $period) {
+            if (!isset($position[$period['rol_id']])) {
+                continue;
+            }
+            $user = $byUser[$period['usr_id']] ?? ['before' => [], 'after' => [], 'begins' => [], 'ends' => []];
+            if ($period['begin'] <= $dayBefore && $period['end'] >= $dayBefore) {
+                $user['before'][$period['rol_id']] = true;
+                // Ende im Jahr, falls die Rolle wegfällt
+                $user['ends'][$period['rol_id']] = max($user['ends'][$period['rol_id']] ?? '', $period['end']);
+            }
+            if ($period['begin'] <= $dayAfter && $period['end'] >= $dayAfter) {
+                $user['after'][$period['rol_id']] = true;
+                $current = $user['begins'][$period['rol_id']] ?? null;
+                $user['begins'][$period['rol_id']] = $current === null ? $period['begin'] : min($current, $period['begin']);
+            }
+            $byUser[$period['usr_id']] = $user;
+        }
+
+        $byPosition = static fn(int $a, int $b): int => $position[$a] <=> $position[$b];
+        $changes = [];
+        foreach ($byUser as $usrId => $user) {
+            $before = array_keys($user['before']);
+            $after = array_keys($user['after']);
+            if ($before === [] || $after === []) {
+                continue; // Eintritt oder Austritt, kein Wechsel
+            }
+            usort($before, $byPosition);
+            usort($after, $byPosition);
+            if ($before === $after) {
+                continue;
+            }
+            /*
+             * Der Wechsel gehört in das Jahr, in dem die neue Rolle beginnt; beginnt sie erst am
+             * 1. Januar des Folgejahres, zählt er dort. Fällt nur eine Rolle weg, gehört er in das
+             * Jahr, in dem sie endet (ein Ende am 31. Dezember des Vorjahres zählte schon dort).
+             */
+            $added = array_diff($after, $before);
+            $removed = array_diff($before, $after);
+            if ($added !== []) {
+                $date = min(array_map(static fn(int $rolId): string => $user['begins'][$rolId], $added));
+                if ($date > $yearEnd) {
+                    continue;
+                }
+            } else {
+                $date = max(array_map(static fn(int $rolId): string => $user['ends'][$rolId], $removed));
+                if ($date < $yearStart) {
+                    continue;
+                }
+            }
+            $changes[] = ['usr_id' => $usrId, 'before' => $before, 'after' => $after, 'date' => $date];
+        }
+
+        return $changes;
+    }
+
+    /**
      * Rollen je Person, in denen sie im Jahr mindestens einen Tag war, in der Reihenfolge des Beginns
      * (für die Spalte „Rollen“ der Listen).
      *

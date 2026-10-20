@@ -9,17 +9,17 @@ namespace AdmHistory;
  * Die Ausgabe entsteht ohne Smarty-Vorlage direkt in PHP, damit Änderungen am Plugin sofort wirken
  * und kein übersetztes Template zwischengespeichert wird. Die Klasse kennt kein Admidio.
  *
- * Unter der Tabelle stehen die Buttons „Eintritte“ und „Austritte“ für alle Rollen der Kachel
- * zusammen.
+ * Unter der Tabelle stehen die Buttons „Eintritte“, „Austritte“ und „Wechsel“ für alle Rollen der
+ * Kachel zusammen.
  *
  * Kachel je Eintrag: key (previous/current/next), year, label (z. B. „Folgejahr“), rows mit
  * label, begin, end, changes (siehe MemberCounter::yearTable()) und url (Link zur Liste oder ''),
- * joined und left jeweils mit count und url (Liste der Eintritte bzw. Austritte).
+ * joined, left und switched jeweils mit count und url (Liste der Eintritte, Austritte, Wechsel).
  */
 final class OverviewTileRenderer
 {
     /**
-     * @param array<int, array{key:string, year:int, label:string, rows:array<int, array{label:string, begin:int, end:int, changes:int, url:string}>, joined:array{count:int, url:string}, left:array{count:int, url:string}}> $tiles
+     * @param array<int, array{key:string, year:int, label:string, rows:array<int, array{label:string, begin:int, end:int, changes:int, url:string}>, joined:array{count:int, url:string}, left:array{count:int, url:string}, switched:array{count:int, url:string}}> $tiles
      * @param string $pluginName Ordnername des Plugins (für die HTML-IDs)
      * @param string $historyUrl URL der Mitglieder-Historie (Ziel der Überschrift)
      */
@@ -54,6 +54,7 @@ final class OverviewTileRenderer
                 . '<div class="d-flex gap-2 mb-2">'
                 . $this->kindButton('Eintritte', 'bi-box-arrow-in-right', $tile['joined'], $tile['year'])
                 . $this->kindButton('Austritte', 'bi-box-arrow-right', $tile['left'], $tile['year'])
+                . $this->kindButton('Wechsel', 'bi-arrow-left-right', $tile['switched'], $tile['year'])
                 . '</div></div>';
         }
 

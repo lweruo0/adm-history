@@ -168,6 +168,13 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   31. Dezember endende und am 1. Januar nahtlos fortgesetzte Mitgliedschaft ist keine Bewegung. Ein
   Wechsel zwischen Rollen der Kachel, z. B. zum 1. Januar von Passiv zu Aktiv, ist weder Ein- noch
   Austritt. Die Spalte „Rollen“ der Liste nennt die Rollen, in denen die Person im Jahr war.
+- **Button „Wechsel“**: Daneben, mit denselben Stichtagen. Aufgeführt wird, wer am 31. Dezember des
+  Vorjahres und am 1. Januar des Folgejahres in mindestens einer Rolle der Kachel war, aber nicht in
+  denselben Rollen, z. B. von Passiv zu Aktiv (die gemeinsame Rolle „Mitglied“ steht dann in
+  „Vorher“ und „Nachher“). Die Liste zeigt die Rollen an beiden Stichtagen und das Datum des
+  Wechsels (Beginn der neuen Rolle; fällt nur eine Rolle weg, deren Ende). Der Wechsel zählt in dem
+  Jahr, in das dieses Datum fällt: ein Wechsel zum 1. Januar also im neuen Jahr, nicht zusätzlich
+  im alten. Ein Hin- und Rückwechsel innerhalb des Jahres erscheint nicht.
 
 ## Mitgliedsarten konfigurieren
 

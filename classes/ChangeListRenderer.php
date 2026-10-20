@@ -10,7 +10,8 @@ use DateTimeImmutable;
  * (verlinkt auf das Profil), Rollen im Jahr, Eintritt und Austritt. Art „all“ zeigt die
  * unterjährigen Bewegungen einer Kachelzeile (Stichtage 1. Januar und 31. Dezember), „joined“ und
  * „left“ alle Eintritte bzw. Austritte des Jahres (Stichtage 31. Dezember des Vorjahres und
- * 1. Januar des Folgejahres), siehe MemberCounter::changesInYear().
+ * 1. Januar des Folgejahres), siehe MemberCounter::changesInYear(). Art „switched“ (renderSwitches)
+ * zeigt die Rollenwechsel, siehe MemberCounter::roleChangesInYear().
  *
  * Eintrag je Person: first_name, last_name, usr_uuid, roles (Rollennamen im Jahr), begin
  * (Eintrittsdatum Y-m-d oder null), end (Austrittsdatum Y-m-d oder null),
@@ -21,13 +22,15 @@ final class ChangeListRenderer
     public const KIND_ALL = 'all';
     public const KIND_JOINED = 'joined';
     public const KIND_LEFT = 'left';
-    public const KINDS = [self::KIND_ALL, self::KIND_JOINED, self::KIND_LEFT];
+    public const KIND_SWITCHED = 'switched';
+    public const KINDS = [self::KIND_ALL, self::KIND_JOINED, self::KIND_LEFT, self::KIND_SWITCHED];
 
     /** Überschriften je Art */
     public const KIND_TITLES = [
-        self::KIND_ALL    => 'Ein- und Austritte',
-        self::KIND_JOINED => 'Eintritte',
-        self::KIND_LEFT   => 'Austritte',
+        self::KIND_ALL      => 'Ein- und Austritte',
+        self::KIND_JOINED   => 'Eintritte',
+        self::KIND_LEFT     => 'Austritte',
+        self::KIND_SWITCHED => 'Wechsel',
     ];
 
     /**
@@ -80,6 +83,52 @@ final class ChangeListRenderer
                 . '<td>' . $e(implode(', ', $entry['roles'])) . '</td>'
                 . '<td>' . self::formatDate($entry['begin']) . '</td>'
                 . '<td>' . self::formatDate($entry['end']) . '</td>'
+                . '</tr>';
+        }
+        $html .= '</tbody></table>'
+            . '<p class="form-text mb-0">' . count($entries) . ' ' . (count($entries) === 1 ? 'Person' : 'Personen') . '</p>'
+            . '</div></div>';
+
+        $page->addHtml($html);
+    }
+
+    /**
+     * Liste der Rollenwechsel (Art „switched“): Nachname, Vorname, Rollen vorher, Rollen nachher, Datum.
+     *
+     * @param array<int, array{usr_uuid:string, first_name:string, last_name:string, before:string[], after:string[], date:?string}> $entries
+     * @param string[]                                                                                                           $roleNames Rollen der Kachel
+     */
+    public function renderSwitches(PagePresenter $page, array $entries, array $roleNames, int $year): void
+    {
+        $e = Html::escape(...);
+
+        usort($entries, static fn(array $a, array $b): int =>
+            [mb_strtolower($a['last_name']), mb_strtolower($a['first_name'])]
+            <=> [mb_strtolower($b['last_name']), mb_strtolower($b['first_name'])]);
+
+        $html = '<div class="card admidio-blog"><div class="card-body">'
+            . '<p class="form-text">Personen, die am 31. Dezember ' . ($year - 1) . ' und am 1. Januar ' . ($year + 1)
+            . ' in mindestens einer der Rollen ' . $e(implode(', ', $roleNames)) . ' waren, aber nicht in denselben. '
+            . '„Vorher“ und „Nachher“ nennen die Rollen an diesen beiden Tagen, das Datum den Beginn der neuen Rolle '
+            . '(ohne neue Rolle: das Ende der weggefallenen). Ein Hin- und Rückwechsel innerhalb des Jahres erscheint nicht.</p>';
+
+        if ($entries === []) {
+            $html .= '<p>Keine Wechsel ' . $year . '.</p></div></div>';
+            $page->addHtml($html);
+
+            return;
+        }
+
+        $html .= '<table class="table table-hover table-sm">'
+            . '<thead><tr><th>Nachname</th><th>Vorname</th><th>Vorher</th><th>Nachher</th><th>Datum</th></tr></thead><tbody>';
+        foreach ($entries as $entry) {
+            $profileUrl = SecurityUtils::encodeUrl(ADMIDIO_URL . FOLDER_MODULES . '/profile/profile.php', ['user_uuid' => $entry['usr_uuid']]);
+            $html .= '<tr>'
+                . '<td><a href="' . $profileUrl . '">' . $e($entry['last_name']) . '</a></td>'
+                . '<td><a href="' . $profileUrl . '">' . $e($entry['first_name']) . '</a></td>'
+                . '<td>' . $e(implode(', ', $entry['before'])) . '</td>'
+                . '<td>' . $e(implode(', ', $entry['after'])) . '</td>'
+                . '<td>' . self::formatDate($entry['date']) . '</td>'
                 . '</tr>';
         }
         $html .= '</tbody></table>'

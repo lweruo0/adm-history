@@ -6,7 +6,7 @@
  * 1. Januar und am 31. Dezember in den konfigurierten Rollen („overviewRoles“ in mitgliedsarten.php)
  * waren. Gab es im Jahr Ein- oder Austritte, öffnet ein Button in der vierten Spalte die Liste dieser
  * Personen in einer neuen Registerkarte (mode=changes); unter der Tabelle stehen die Buttons
- * „Eintritte“ und „Austritte“ für alle Rollen der Kachel zusammen. Das HTML entsteht ohne
+ * „Eintritte“, „Austritte“ und „Wechsel“ für alle Rollen der Kachel zusammen. Das HTML entsteht ohne
  * Smarty-Vorlage direkt in PHP (OverviewTileRenderer). Eingebunden wird die Datei in der Vorlage
  * system/overview.tpl des Themes:
  *
@@ -28,8 +28,10 @@
  *   row   (GET)  mode=changes: Position der Zeile in „overviewRoles“ (ab 0); -1 oder weggelassen =
  *                alle Rollen der Kachel
  *   kind  (GET)  mode=changes: „all“ (unterjährige Ein- und Austritte, Stichtage 1. Januar und
- *                31. Dezember, Standard), „joined“ (Eintritte) oder „left“ (Austritte); bei „joined“
- *                und „left“ zählen auch Eintritte zum 1. Januar und Austritte zum 31. Dezember
+ *                31. Dezember, Standard), „joined“ (Eintritte), „left“ (Austritte) oder „switched“
+ *                (Rollenwechsel); bei diesen drei gelten die Stichtage 31. Dezember des Vorjahres und
+ *                1. Januar des Folgejahres, Eintritte zum 1. Januar und Austritte zum 31. Dezember
+ *                zählen also mit
  */
 
 use Admidio\Infrastructure\Exception;
@@ -140,6 +142,32 @@ try {
                 ];
             }
         }
+        $listPage = PagePresenter::withHtmlIDAndHeadline(
+            'adm_history_changes',
+            ChangeListRenderer::KIND_TITLES[$getKind] . ' ' . $getListYear . ': ' . $label
+        );
+
+        // Button „Wechsel“: Rollen am 31. Dezember des Vorjahres und am 1. Januar des Folgejahres vergleichen
+        if ($getKind === ChangeListRenderer::KIND_SWITCHED) {
+            $toNames = static fn(array $rolIds): array => array_map(static fn(int $rolId): string => $roleNameById[$rolId], $rolIds);
+            $entries = [];
+            foreach ($counter->roleChangesInYear($periods, $roleIds, $getListYear) as $change) {
+                $member = $memberByUsrId[$change['usr_id']];
+                $entries[] = [
+                    'usr_uuid'   => $member['usr_uuid'],
+                    'first_name' => $member['first_name'],
+                    'last_name'  => $member['last_name'],
+                    'before'     => $toNames($change['before']),
+                    'after'      => $toNames($change['after']),
+                    'date'       => $change['date'],
+                ];
+            }
+            (new ChangeListRenderer())->renderSwitches($listPage, $entries, $roleNames, $getListYear);
+            $listPage->show();
+
+            return;
+        }
+
         // Zeilen-Button (kind=all): nur unterjährige Bewegungen; Buttons „Eintritte“/„Austritte“:
         // auch Eintritte zum 1. Januar und Austritte zum 31. Dezember
         $scope = $getKind === ChangeListRenderer::KIND_ALL ? MemberCounter::SCOPE_WITHIN_YEAR : MemberCounter::SCOPE_WHOLE_YEAR;
@@ -162,10 +190,6 @@ try {
             ];
         }
 
-        $listPage = PagePresenter::withHtmlIDAndHeadline(
-            'adm_history_changes',
-            ChangeListRenderer::KIND_TITLES[$getKind] . ' ' . $getListYear . ': ' . $label
-        );
         (new ChangeListRenderer())->render($listPage, $entries, $label, $roleNames, $getListYear, $getKind);
         $listPage->show();
 
@@ -207,6 +231,7 @@ try {
         $changes = $counter->changesInYear($periods, $allRoleIds, $year, MemberCounter::SCOPE_WHOLE_YEAR);
         $joined = count(array_filter($changes, static fn(array $change): bool => $change['begin'] !== null));
         $left = count(array_filter($changes, static fn(array $change): bool => $change['end'] !== null));
+        $switched = count($counter->roleChangesInYear($periods, $allRoleIds, $year));
 
         $tiles[] = [
             'key'    => $key,
@@ -220,6 +245,10 @@ try {
             'left'   => [
                 'count' => $left,
                 'url'   => $left > 0 ? SecurityUtils::encodeUrl($overviewUrl, ['mode' => 'changes', 'year' => $year, 'kind' => ChangeListRenderer::KIND_LEFT]) : '',
+            ],
+            'switched' => [
+                'count' => $switched,
+                'url'   => $switched > 0 ? SecurityUtils::encodeUrl($overviewUrl, ['mode' => 'changes', 'year' => $year, 'kind' => ChangeListRenderer::KIND_SWITCHED]) : '',
             ],
         ];
     }

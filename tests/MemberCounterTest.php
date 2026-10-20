@@ -120,6 +120,38 @@ final class MemberCounterTest extends TestCase
         self::assertSame([], $this->counter->changesInYear($periods, [10], 2023, MemberCounter::SCOPE_WHOLE_YEAR));
     }
 
+    public function testRoleChangesInYearListSwitchesBetweenRoles(): void
+    {
+        $periods = [
+            ['usr_id' => 1, 'rol_id' => 20, 'begin' => '2020-01-01', 'end' => '9999-12-31'], // Mitglied durchgehend
+            ['usr_id' => 1, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '2025-12-31'], // Aktiv bis 31.12.2025 ...
+            ['usr_id' => 1, 'rol_id' => 11, 'begin' => '2026-01-01', 'end' => '9999-12-31'], // ... Passiv ab 01.01.2026
+            ['usr_id' => 2, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '2026-06-30'], // Wechsel im Jahr
+            ['usr_id' => 2, 'rol_id' => 11, 'begin' => '2026-07-01', 'end' => '9999-12-31'],
+            ['usr_id' => 3, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '2026-03-31'], // hin und zurück
+            ['usr_id' => 3, 'rol_id' => 11, 'begin' => '2026-04-01', 'end' => '2026-08-31'],
+            ['usr_id' => 3, 'rol_id' => 10, 'begin' => '2026-09-01', 'end' => '9999-12-31'],
+            ['usr_id' => 4, 'rol_id' => 10, 'begin' => '2026-01-01', 'end' => '9999-12-31'], // Eintritt, kein Wechsel
+            ['usr_id' => 5, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '2026-12-31'], // Austritt, kein Wechsel
+            ['usr_id' => 6, 'rol_id' => 20, 'begin' => '2020-01-01', 'end' => '9999-12-31'], // nur Mitglied ...
+            ['usr_id' => 6, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '2026-05-31'], // ... Aktiv fällt weg
+            ['usr_id' => 7, 'rol_id' => 20, 'begin' => '2020-01-01', 'end' => '9999-12-31'], // Mitglied bleibt ...
+            ['usr_id' => 7, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '2026-12-31'], // ... Aktiv endet 31.12.
+        ];
+
+        self::assertSame([
+            ['usr_id' => 1, 'before' => [20, 10], 'after' => [20, 11], 'date' => '2026-01-01'],
+            ['usr_id' => 2, 'before' => [10], 'after' => [11], 'date' => '2026-07-01'],
+            ['usr_id' => 6, 'before' => [20, 10], 'after' => [20], 'date' => '2026-05-31'],
+            ['usr_id' => 7, 'before' => [20, 10], 'after' => [20], 'date' => '2026-12-31'],
+        ], $this->counter->roleChangesInYear($periods, [20, 10, 11], 2026));
+        // 2025: der Wechsel zum 01.01.2026 zählt noch nicht; 2027: der Wegfall zum 31.12.2026 nicht mehr
+        self::assertSame([], $this->counter->roleChangesInYear($periods, [20, 10, 11], 2025));
+        self::assertSame([], $this->counter->roleChangesInYear($periods, [20, 10, 11], 2027));
+        // ohne die gemeinsame Rolle: Person 6 ist ein Austritt, kein Wechsel
+        self::assertSame([1, 2], array_column($this->counter->roleChangesInYear($periods, [10, 11], 2026), 'usr_id'));
+    }
+
     public function testRoleIdsInYearByUserOrderedByBegin(): void
     {
         $byUser = $this->counter->roleIdsInYearByUser($this->periods, [10, 11], 2025);
