@@ -75,12 +75,13 @@ return [
     // Beschriftung => Rolle bzw. Liste von Rollen (Personen in mindestens einer der Rollen, jede
     // Person nur einmal gezählt). Leer oder weggelassen: die Kachel zeigt einen Hinweis.
     'overviewRoles' => [
-        'Mitglied',
         'Aktiv',
         'Passiv',
         'Jugend',
         'Ehren',
         'Förder',
+        'Summe', ['Aktiv', 'Passiv', 'Jugend', 'Ehren', 'Förder'],
+        'Mitglied',
     ],
 
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).
