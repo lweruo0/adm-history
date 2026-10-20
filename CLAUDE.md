@@ -64,7 +64,8 @@ Die wichtigsten Regeln daraus, die in diesem Repo gelten:
   Änderungsplanung in `MembershipChangePlanner`, Zählung der Kacheln in `MemberCounter`,
   Konfiguration), bleibt frei von Admidio-Klassen
   und wird mit PHPUnit getestet. Admidio-gebundene Klassen (`MembershipRepository`,
-  `MembershipChanger`, `HistoryTableRenderer`) bleiben dünn und werden im laufenden Admidio geprüft.
+  `MembershipChanger`, `HistoryTableRenderer`, `ChangeListRenderer`) bleiben dünn und werden im
+  laufenden Admidio geprüft.
 - **Wechsel-Semantik**: Ein Wechsel gilt immer ab dem 1. Januar des gewählten Jahres (nur aktuelles
   Jahr und Folgejahr); die Jahresspalte zeigt die Mitgliedsart am 31.12. Änderungen an dieser
   Semantik werden in README, `mitgliedsarten.php` und `MembershipChangePlanner` gleichzeitig

@@ -45,20 +45,55 @@ final class MemberCounterTest extends TestCase
         self::assertSame(0, $this->counter->countAtDate([], [10], '2025-01-01'));
     }
 
+    public function testChangesInYearListJoinersAndLeaversWithDates(): void
+    {
+        // 2025 Aktiv: Person 3 tritt am 01.07. ein; Person 2 endet erst am 31.12. (am Stichtag noch dabei)
+        self::assertSame(
+            [['usr_id' => 3, 'begin' => '2025-07-01', 'end' => null]],
+            $this->counter->changesInYear($this->periods, [10], 2025)
+        );
+        // 2025 Passiv: Person 3 tritt am 30.06. aus; Person 1 ist ab 01.01. dabei (kein Eintritt im Jahr)
+        self::assertSame(
+            [['usr_id' => 3, 'begin' => null, 'end' => '2025-06-30']],
+            $this->counter->changesInYear($this->periods, [11], 2025)
+        );
+        // Rollengruppe: Person 3 wechselt innerhalb der Gruppe, bleibt also durchgehend Mitglied
+        self::assertSame([], $this->counter->changesInYear($this->periods, [10, 11], 2025));
+        // 2026 Aktiv: Person 2 ist zum 01.01. nicht mehr dabei, aber auch nicht im Jahr -> keine Bewegung
+        self::assertSame([], $this->counter->changesInYear($this->periods, [10], 2026));
+        self::assertSame([], $this->counter->changesInYear($this->periods, [10], 2014));
+    }
+
+    public function testChangesInYearHandleEntryAndExitWithinSameYearAndInterruptions(): void
+    {
+        $periods = [
+            ['usr_id' => 5, 'rol_id' => 10, 'begin' => '2024-02-01', 'end' => '2024-10-31'], // Ein- und Austritt 2024
+            ['usr_id' => 6, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '2024-03-31'], // Unterbrechung ...
+            ['usr_id' => 6, 'rol_id' => 10, 'begin' => '2024-09-01', 'end' => '9999-12-31'], // ... und Wiedereintritt
+            ['usr_id' => 7, 'rol_id' => 10, 'begin' => '2024-05-01', 'end' => '2024-05-31'], // zwei kurze Zeiträume
+            ['usr_id' => 7, 'rol_id' => 10, 'begin' => '2024-08-01', 'end' => '2024-08-31'],
+        ];
+
+        self::assertSame([
+            ['usr_id' => 5, 'begin' => '2024-02-01', 'end' => '2024-10-31'],
+            ['usr_id' => 7, 'begin' => '2024-05-01', 'end' => '2024-08-31'],
+        ], $this->counter->changesInYear($periods, [10], 2024));
+    }
+
     public function testYearTableKeepsRowOrderAndLabels(): void
     {
         $rows = ['Aktiv' => [10], 'Passiv' => [11], 'Alle' => [10, 11]];
 
         self::assertSame([
-            ['label' => 'Aktiv',  'begin' => 2, 'end' => 3],
-            ['label' => 'Passiv', 'begin' => 2, 'end' => 1],
-            ['label' => 'Alle',   'begin' => 3, 'end' => 3],
+            ['label' => 'Aktiv',  'begin' => 2, 'end' => 3, 'changes' => 1],
+            ['label' => 'Passiv', 'begin' => 2, 'end' => 1, 'changes' => 1],
+            ['label' => 'Alle',   'begin' => 3, 'end' => 3, 'changes' => 0],
         ], $this->counter->yearTable($this->periods, $rows, 2025));
 
         self::assertSame([
-            ['label' => 'Aktiv',  'begin' => 2, 'end' => 2],
-            ['label' => 'Passiv', 'begin' => 2, 'end' => 2],
-            ['label' => 'Alle',   'begin' => 3, 'end' => 3],
+            ['label' => 'Aktiv',  'begin' => 2, 'end' => 2, 'changes' => 0],
+            ['label' => 'Passiv', 'begin' => 2, 'end' => 2, 'changes' => 0],
+            ['label' => 'Alle',   'begin' => 3, 'end' => 3, 'changes' => 0],
         ], $this->counter->yearTable($this->periods, $rows, 2026));
 
         self::assertSame([], $this->counter->yearTable($this->periods, [], 2026));
