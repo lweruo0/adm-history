@@ -27,8 +27,9 @@
  *                mode=changes: das Jahr als Zahl (Vorjahr bis Folgejahr)
  *   row   (GET)  mode=changes: Position der Zeile in „overviewRoles“ (ab 0); -1 oder weggelassen =
  *                alle Rollen der Kachel
- *   kind  (GET)  mode=changes: „all“ (Ein- und Austritte, Standard), „joined“ (nur Eintritte) oder
- *                „left“ (nur Austritte)
+ *   kind  (GET)  mode=changes: „all“ (unterjährige Ein- und Austritte, Stichtage 1. Januar und
+ *                31. Dezember, Standard), „joined“ (Eintritte) oder „left“ (Austritte); bei „joined“
+ *                und „left“ zählen auch Eintritte zum 1. Januar und Austritte zum 31. Dezember
  */
 
 use Admidio\Infrastructure\Exception;
@@ -139,9 +140,12 @@ try {
                 ];
             }
         }
+        // Zeilen-Button (kind=all): nur unterjährige Bewegungen; Buttons „Eintritte“/„Austritte“:
+        // auch Eintritte zum 1. Januar und Austritte zum 31. Dezember
+        $scope = $getKind === ChangeListRenderer::KIND_ALL ? MemberCounter::SCOPE_WITHIN_YEAR : MemberCounter::SCOPE_WHOLE_YEAR;
         $roleIdsByUser = $counter->roleIdsInYearByUser($periods, $roleIds, $getListYear);
         $entries = [];
-        foreach ($counter->changesInYear($periods, $roleIds, $getListYear) as $change) {
+        foreach ($counter->changesInYear($periods, $roleIds, $getListYear, $scope) as $change) {
             // Filter nach Art: Eintritte haben ein Eintrittsdatum, Austritte ein Austrittsdatum
             if (($getKind === ChangeListRenderer::KIND_JOINED && $change['begin'] === null)
                 || ($getKind === ChangeListRenderer::KIND_LEFT && $change['end'] === null)) {
@@ -198,8 +202,9 @@ try {
             $tableRows[] = $tableRow;
         }
 
-        // Buttons „Eintritte“ und „Austritte“ über alle Rollen der Kachel
-        $changes = $counter->changesInYear($periods, $allRoleIds, $year);
+        // Buttons „Eintritte“ und „Austritte“ über alle Rollen der Kachel, einschließlich Eintritten
+        // zum 1. Januar und Austritten zum 31. Dezember
+        $changes = $counter->changesInYear($periods, $allRoleIds, $year, MemberCounter::SCOPE_WHOLE_YEAR);
         $joined = count(array_filter($changes, static fn(array $change): bool => $change['begin'] !== null));
         $left = count(array_filter($changes, static fn(array $change): bool => $change['end'] !== null));
 

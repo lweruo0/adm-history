@@ -6,9 +6,11 @@ use Admidio\UI\Presenter\PagePresenter;
 use DateTimeImmutable;
 
 /**
- * Liste der unterjährigen Ein- und Austritte (overview.php?mode=changes): Nachname, Vorname
- * (verlinkt auf das Profil), Rollen im Jahr, Eintritt und Austritt. Je nach Art („all“, „joined“,
- * „left“) sind es alle Bewegungen einer Kachelzeile, nur die Eintritte oder nur die Austritte.
+ * Liste der Ein- und Austritte eines Jahres (overview.php?mode=changes): Nachname, Vorname
+ * (verlinkt auf das Profil), Rollen im Jahr, Eintritt und Austritt. Art „all“ zeigt die
+ * unterjährigen Bewegungen einer Kachelzeile (Stichtage 1. Januar und 31. Dezember), „joined“ und
+ * „left“ alle Eintritte bzw. Austritte des Jahres (Stichtage 31. Dezember des Vorjahres und
+ * 1. Januar des Folgejahres), siehe MemberCounter::changesInYear().
  *
  * Eintrag je Person: first_name, last_name, usr_uuid, roles (Rollennamen im Jahr), begin
  * (Eintrittsdatum Y-m-d oder null), end (Austrittsdatum Y-m-d oder null),
@@ -46,17 +48,20 @@ final class ChangeListRenderer
             ? '„' . $e($label) . '“ (' . $e(implode(', ', $roleNames)) . ')'
             : '„' . $e($label) . '“';
         $intro = match ($kind) {
-            self::KIND_JOINED => 'Personen, die ' . $year . ' in ' . $rolesText . ' eingetreten sind, also am 1. Januar in keiner '
-                . 'dieser Rollen waren und im Jahr mindestens einen Tag in einer davon.',
+            self::KIND_JOINED => 'Personen, die ' . $year . ' in ' . $rolesText . ' eingetreten sind, also am 31. Dezember '
+                . ($year - 1) . ' in keiner dieser Rollen waren und im Jahr mindestens einen Tag in einer davon (auch ab dem 1. Januar).',
             self::KIND_LEFT => 'Personen, die ' . $year . ' aus ' . $rolesText . ' ausgetreten sind, also im Jahr mindestens einen Tag '
-                . 'in einer dieser Rollen waren und am 31. Dezember in keiner mehr.',
+                . 'in einer dieser Rollen waren und am 1. Januar ' . ($year + 1) . ' in keiner mehr (auch zum 31. Dezember).',
             default => 'Personen, die ' . $year . ' mindestens einen Tag in ' . $rolesText . ' waren, aber nicht am 1. Januar '
-                . 'und am 31. Dezember zugleich.',
+                . 'und am 31. Dezember zugleich (unterjährige Ein- und Austritte).',
         };
+        $emptyDateNote = $kind === self::KIND_ALL
+            ? 'am 1. Januar bereits bzw. am 31. Dezember noch Mitglied.'
+            : 'schon vor dem Jahr bzw. über das Jahr hinaus Mitglied.';
 
         $html = '<div class="card admidio-blog"><div class="card-body">'
-            . '<p class="form-text">' . $intro . ' Ein leeres Datum bedeutet: am 1. Januar bereits bzw. am 31. Dezember noch Mitglied. '
-            . 'Die Spalte „Rollen“ nennt die Rollen, in denen die Person im Jahr war.</p>';
+            . '<p class="form-text">' . $intro . ' Ein leeres Datum bedeutet: ' . $emptyDateNote
+            . ' Die Spalte „Rollen“ nennt die Rollen, in denen die Person im Jahr war.</p>';
 
         if ($entries === []) {
             $html .= '<p>Keine ' . self::KIND_TITLES[$kind] . ' ' . $year . '.</p></div></div>';
