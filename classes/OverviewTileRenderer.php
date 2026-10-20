@@ -51,7 +51,7 @@ final class OverviewTileRenderer
                     . '</tr>';
             }
             $html .= '</tbody></table>'
-                . '<div class="d-flex gap-2 mb-2">'
+                . '<div class="d-flex flex-wrap gap-2 mb-2">'
                 . $this->kindButton('Eintritte', 'bi-box-arrow-in-right', $tile['joined'], $tile['year'])
                 . $this->kindButton('Austritte', 'bi-box-arrow-right', $tile['left'], $tile['year'])
                 . $this->kindButton('Wechsel', 'bi-arrow-left-right', $tile['switched'], $tile['year'])
