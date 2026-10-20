@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Admidio-5-Plugin „Mitglieder-Historie“ (`adm_plugins/history`): Mitgliedsart je Kalenderjahr für
+Admidio-5-Plugin „Mitglieder-Historie“ (`adm_plugins/adm-history`): Mitgliedsart je Kalenderjahr für
 alle Personen, Wechsel der Mitgliedsart für aktuelles Jahr und Folgejahr, dazu Kacheln mit
 Mitgliederzahlen je Rolle für die Admidio-Übersichtsseite (`overview.php`). Fachliche Beschreibung,
 Bedienung und Aufbau stehen in der @README.md und werden hier nicht wiederholt.

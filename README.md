@@ -17,9 +17,9 @@ werden, steht in `mitgliedsarten.php` und lässt sich dort ohne Programmierung �
 
 ## Installation
 
-1. Ordner nach `adm_plugins/history` kopieren (der Ordnername ist frei wählbar).
+1. Ordner nach `adm_plugins/adm-history` kopieren (der Ordnername ist frei wählbar).
 2. `mitgliedsarten.php` an die eigenen Rollen anpassen (siehe unten).
-3. `adm_plugins/history/index.php` als Administrator aufrufen oder wie unten beschrieben im
+3. `adm_plugins/adm-history/index.php` als Administrator aufrufen oder wie unten beschrieben im
    Admidio-Menü verlinken.
 4. Optional die Kacheln mit den Mitgliederzahlen in die Übersichtsseite einbinden (siehe unten).
 
@@ -38,7 +38,7 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
    | Name | z. B. `Mitglieder-Historie` |
    | Beschreibung | optional, z. B. `Mitgliedsart je Jahr, Wechsel für aktuelles Jahr und Folgejahr` |
    | Übergeordneter Menüpunkt | `Administration` |
-   | URL | `/adm_plugins/history/index.php` |
+   | URL | `/adm_plugins/adm-history/index.php` |
    | Icon | `bi-clock-history` |
    | Sichtbar für | Rolle `Administrator` |
 
@@ -50,7 +50,8 @@ Die Admidio-Übersichtsseite (Startseite, `modules/overview.php`) wird aus der S
 `system/overview.tpl` des Themes aufgebaut; im mitgelieferten Theme liegt sie unter
 `themes/simple/templates/system/overview.tpl`. Jede Kachel ist dort ein Block aus `<div>`-Elementen
 mit einem `{load_admidio_plugin ...}`-Aufruf, der eine PHP-Datei aus `adm_plugins` einbindet. Das
-Plugin liefert dafür `overview.php`; das Attribut `year` wählt das Jahr der Kachel: `next`
+Plugin liefert dafür `overview.php`, das sein HTML direkt ausgibt (keine eigene Smarty-Vorlage, also
+kein Zwischenspeicher für Plugin-Änderungen); das Attribut `year` wählt das Jahr der Kachel: `next`
 (Folgejahr), `current` (aktuelles Jahr), `previous` (Vorjahr). Ohne Attribut stehen alle drei
 Tabellen in einer Kachel.
 
@@ -65,18 +66,18 @@ Tabellen in einer Kachel.
    des Plugins in `adm_plugins`:
 
    ```smarty
-   <div class="admidio-overview-plugin col-sm-6 col-lg-4 col-xl-3" id="admidio-plugin-history-next">
+   <div class="admidio-overview-plugin col-sm-6 col-lg-4 col-xl-3" id="admidio-plugin-adm-history-next">
        <div class="card admidio-card">
            <div class="card-body">
-               {load_admidio_plugin plugin="history" file="overview.php" year="next"}
+               {load_admidio_plugin plugin="adm-history" file="overview.php" year="next"}
            </div>
        </div>
    </div>
    ```
 
    Für das aktuelle Jahr und das Vorjahr denselben Block mit `year="current"` bzw.
-   `year="previous"` (und einer anderen `id`, z. B. `admidio-plugin-history-current` und
-   `admidio-plugin-history-previous`) einfügen. Die Reihenfolge der Blöcke bestimmt die
+   `year="previous"` (und einer anderen `id`, z. B. `admidio-plugin-adm-history-current` und
+   `admidio-plugin-adm-history-previous`) einfügen. Die Reihenfolge der Blöcke bestimmt die
    Reihenfolge der Kacheln, die Klassen `col-...` die Breite (wie bei den Admidio-Kacheln).
 4. Übersichtsseite neu laden. Smarty übersetzt die geänderte Vorlage automatisch; erscheint die
    Änderung nicht, den Ordner `adm_my_files/templates/compile` leeren.
@@ -85,7 +86,7 @@ Die Zahlen sehen nur angemeldete Administratoren; `overview.php` gibt für alle 
 Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` mit
 `{if $validLogin && $currentUser->isAdministrator()}` … `{/if}` umschließen (Beispiel: öffnendes
 `{if ...}` vor dem ersten Kachel-Block, `{/if}` nach dem letzten). Zum Prüfen ohne Vorlagenänderung lässt sich
-`adm_plugins/history/overview.php?year=current` direkt im Browser aufrufen.
+`adm_plugins/adm-history/overview.php?year=current` direkt im Browser aufrufen.
 
 ## Bedienung
 
@@ -149,9 +150,10 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   oder nach dem Stichtag liegt; geplante Mitgliedschaften (z. B. Eintritt zum Folgejahr) zählen
   also am 1. Januar des Folgejahres. Die Überschrift der Kachel verlinkt auf die Mitglieder-Historie.
   Die Kacheln sehen nur angemeldete Administratoren.
-- **Ein- und Austritte im Jahr**: Gab es in einer Zeile unterjährige Bewegungen, ist der Rollenname
-  ein Link und öffnet in einer neuen Registerkarte die Liste dieser Personen (Nachname, Vorname mit
-  Link zum Profil, Eintritt, Austritt). Aufgeführt wird, wer im Jahr mindestens einen Tag in der
+- **Ein- und Austritte im Jahr**: Gab es in einer Zeile unterjährige Bewegungen, steht in der vierten
+  Spalte ein kleiner Button mit der Anzahl der Personen. Er öffnet in einer neuen Registerkarte die
+  Liste dieser Personen (Nachname, Vorname mit Link zum Profil, Eintritt, Austritt). Ohne Bewegungen
+  bleibt die Spalte leer. Aufgeführt wird, wer im Jahr mindestens einen Tag in der
   Rolle war, aber nicht an beiden Stichtagen: ohne Mitgliedschaft am 1. Januar steht das
   Eintrittsdatum, ohne Mitgliedschaft am 31. Dezember das Austrittsdatum, bei Ein- und Austritt im
   selben Jahr beides. Bei einer Zeile mit mehreren Rollen zählt ein Wechsel zwischen diesen Rollen
@@ -179,7 +181,8 @@ Die mitgelieferte Datei ist zugleich das dokumentierte Beispiel.
 
 Die Tests laufen ohne Admidio und decken die Klassen ohne Admidio-Abhängigkeit ab: Konfiguration
 (`MembershipTypeConfig`), Jahreslogik (`YearHistory`), Änderungsplanung
-(`MembershipChangePlanner`) und Zählung der Kacheln (`MemberCounter`). `MembershipRepository`,
+(`MembershipChangePlanner`), Zählung und HTML der Kacheln (`MemberCounter`, `OverviewTileRenderer`).
+`MembershipRepository`,
 `MembershipChanger`, `HistoryTableRenderer` und `ChangeListRenderer`
 enthalten die Admidio-Aufrufe; Änderungen dort werden im laufenden Admidio geprüft. Für PHPStan sind
 die verwendeten Admidio-Signaturen in `stubs/admidio.php` hinterlegt.
@@ -201,8 +204,6 @@ index.php                          Controller: Rechte, Übersicht, Änderungen p
 overview.php                       Kacheln für die Admidio-Übersichtsseite (load_admidio_plugin, Attribut year) und Liste der Ein- und Austritte (mode=changes)
 autoload.php                       Autoloader für die Klassen in classes/ (von index.php und overview.php eingebunden)
 mitgliedsarten.php                 Konfiguration der Mitgliedsarten (Kürzel, Name, Farbe, Rollen), gemeinsame Rollen, Kacheln
-templates/
-  plugin.history-overview.tpl      Smarty-Vorlage der Kacheln (Tabelle 01.01. / 31.12. je Rolle, Link zu den Ein- und Austritten)
 composer.json, phpunit.xml         Entwicklung (PHPUnit, PHPStan, Skripte lint/test/stan/check)
 phpstan.neon, stubs/admidio.php    PHPStan-Konfiguration und Admidio-Signaturen für die Analyse
 tools/lint.php                     Syntaxprüfung aller PHP-Dateien
@@ -215,6 +216,7 @@ classes/
   HistoryLoader.php                löst die konfigurierten Rollen auf und liefert Zeiträume je Mitgliedsart
   YearHistory.php                  Jahreslogik: Mitgliedsarten je Kalenderjahr und am Jahresende
   MemberCounter.php                zählt Personen je Rolle am 1. Januar und 31. Dezember, ermittelt Ein- und Austritte im Jahr (ohne Admidio)
+  OverviewTileRenderer.php         HTML der Kacheln (Tabelle 01.01. / 31.12. je Rolle, Button zu den Ein- und Austritten; ohne Admidio)
   ChangeListRenderer.php           Seite mit der Liste der Ein- und Austritte einer Kachelzeile
   MembershipChangePlanner.php      berechnet die Datenbankoperationen eines Wechsels (ohne Admidio)
   MembershipChanger.php            prüft Rechte und führt den Wechsel über die Admidio-Entities aus

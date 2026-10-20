@@ -4,11 +4,12 @@
  *
  * Zeigt je Jahr (Vorjahr, aktuelles Jahr, Folgejahr) eine kleine Tabelle, wie viele Personen am
  * 1. Januar und am 31. Dezember in den konfigurierten Rollen („overviewRoles“ in mitgliedsarten.php)
- * waren. Gab es im Jahr Ein- oder Austritte, ist der Rollenname ein Link, der in einer neuen
- * Registerkarte die Liste dieser Personen öffnet (mode=changes). Eingebunden wird die Datei in der
- * Vorlage system/overview.tpl des Themes:
+ * waren. Gab es im Jahr Ein- oder Austritte, öffnet ein Button in der vierten Spalte die Liste dieser
+ * Personen in einer neuen Registerkarte (mode=changes). Das HTML entsteht ohne Smarty-Vorlage direkt
+ * in PHP (OverviewTileRenderer). Eingebunden wird die Datei in der Vorlage system/overview.tpl des
+ * Themes:
  *
- *   {load_admidio_plugin plugin="history" file="overview.php" year="next"}
+ *   {load_admidio_plugin plugin="adm-history" file="overview.php" year="next"}
  *
  * Das Attribut „year“ wählt die Kachel: „previous“ (Vorjahr), „current“ (aktuelles Jahr), „next“
  * (Folgejahr) oder „all“ (alle drei Tabellen untereinander, Standard). Admidio stellt die Attribute
@@ -27,7 +28,6 @@
  */
 
 use Admidio\Infrastructure\Exception;
-use Admidio\Infrastructure\Plugins\Overview;
 use Admidio\Infrastructure\Utils\SecurityUtils;
 use Admidio\UI\Presenter\PagePresenter;
 use AdmHistory\AdmidioContext;
@@ -35,6 +35,7 @@ use AdmHistory\ChangeListRenderer;
 use AdmHistory\MemberCounter;
 use AdmHistory\MembershipRepository;
 use AdmHistory\MembershipTypeConfig;
+use AdmHistory\OverviewTileRenderer;
 
 $getMode = 'view';
 try {
@@ -164,20 +165,22 @@ try {
         }
         $tiles[] = [
             'key'   => $key,
-            'year'  => (string) $year,
+            'year'  => $year,
             'label' => $yearOptions[$key],
             'rows'  => $tableRows,
         ];
     }
 
-    $overviewPlugin = new Overview(basename(__DIR__));
-    $overviewPlugin->assignTemplateVariable('tiles', $tiles);
-    $overviewPlugin->assignTemplateVariable('historyUrl', ADMIDIO_URL . FOLDER_PLUGINS . '/' . basename(__DIR__) . '/index.php');
+    $historyUrl = ADMIDIO_URL . FOLDER_PLUGINS . '/' . basename(__DIR__) . '/index.php';
+    $tileHtml = (new OverviewTileRenderer())->render($tiles, basename(__DIR__), $historyUrl);
 
     if ($embedded) {
-        echo $overviewPlugin->html('plugin.history-overview.tpl');
+        // in der Übersichtsseite: Admidio liefert den Kachelrahmen, hier nur der Inhalt
+        echo $tileHtml;
     } else {
-        $overviewPlugin->showHtmlPage('plugin.history-overview.tpl');
+        $tilePage = PagePresenter::withHtmlIDAndHeadline('adm_history_overview', 'Mitglieder-Historie: Kacheln');
+        $tilePage->addHtml('<div class="card admidio-card"><div class="card-body">' . $tileHtml . '</div></div>');
+        $tilePage->show();
     }
 } catch (Throwable $ex) {
     if ($getMode === 'changes') {
