@@ -81,7 +81,6 @@ return [
         'Jugend',
         'Ehren',
         'Förder',
-        'Aktiv + Jugend' => ['Aktiv', 'Jugend'],
     ],
 
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).
