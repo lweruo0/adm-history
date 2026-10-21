@@ -111,7 +111,15 @@ namespace Admidio\Infrastructure\Entity {
 namespace Admidio\Users\Entity {
     class User extends \Admidio\Infrastructure\Entity\Entity
     {
+        public function __construct(\Admidio\Infrastructure\Database $database, ?\Admidio\ProfileFields\ValueObjects\ProfileFields $userFields = null, int $userId = 0)
+        {
+        }
+
         public function isAdministrator(): bool
+        {
+        }
+
+        public function hasRightEditProfile(self $user, bool $checkOwnProfile = true): bool
         {
         }
 

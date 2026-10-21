@@ -97,6 +97,9 @@ final class MembershipTypeConfigTest extends TestCase
         self::assertFalse($config->isTransitionAllowed('A', 'J'));
         self::assertContains('Mitglied', $config->getOverviewRoleNames());
         self::assertNotSame([], $config->getOverviewRows());
+        self::assertTrue($config->isClubEntry('J', 'A'));
+        self::assertFalse($config->isClubEntry('P', 'A'));
+        self::assertNotSame('', $config->getEntryDateField());
     }
 
     public function testFeeRolesPerTypeAndInAllRoleNames(): void
@@ -163,6 +166,37 @@ final class MembershipTypeConfigTest extends TestCase
         self::assertFalse($config->isTransitionAllowed('', 'A'));
     }
 
+    public function testClubEntryFromConfiguredTypes(): void
+    {
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), [
+            'entryFromTypes' => ['J', ' J ', ''],
+            'entryDateField' => ' BEITRITTSDATUM ',
+        ]));
+
+        self::assertSame(['J', ''], $config->getEntryFromTypes());
+        self::assertSame('BEITRITTSDATUM', $config->getEntryDateField());
+        self::assertTrue($config->isClubEntry('J', 'A'));
+        self::assertTrue($config->isClubEntry('', 'A'));
+        self::assertFalse($config->isClubEntry('J', ''), 'Austritt ist kein Beitritt');
+        self::assertFalse($config->isClubEntry('J', 'J'), 'Beibehalten ist kein Beitritt');
+        self::assertFalse($config->isClubEntry('A', 'J'));
+
+        // einzelnes Kürzel als Text
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), ['entryFromTypes' => 'J']));
+        self::assertSame(['J'], $config->getEntryFromTypes());
+        self::assertSame('', $config->getEntryDateField());
+    }
+
+    public function testWithoutEntryConfigurationNoChangeIsClubEntry(): void
+    {
+        $config = new MembershipTypeConfig(self::validConfig());
+
+        self::assertSame([], $config->getEntryFromTypes());
+        self::assertSame('', $config->getEntryDateField());
+        self::assertFalse($config->isClubEntry('J', 'A'));
+        self::assertFalse($config->isClubEntry('', 'A'));
+    }
+
     public function testUnlistedSourceAllowsNoChangeWhenTransitionsConfigured(): void
     {
         $config = new MembershipTypeConfig(array_merge(self::validConfig(), ['transitions' => ['J' => ['A']]]));
@@ -210,6 +244,10 @@ final class MembershipTypeConfigTest extends TestCase
             'overviewRoles leere Beschriftung' => [array_merge($base, ['overviewRoles' => [' ' => ['Aktiv']]]), 'leere Beschriftung'],
             'overviewRoles ohne Rolle'        => [array_merge($base, ['overviewRoles' => ['Alle' => []]]), 'nennt keine Rolle'],
             'overviewRoles Beschriftung doppelt' => [array_merge($base, ['overviewRoles' => ['Aktiv', 'aktiv' => ['Jugend']]]), 'mehrfach'],
+            'entryFromTypes kein Array'          => [array_merge($base, ['entryFromTypes' => 1]), '„entryFromTypes“'],
+            'entryFromTypes unbekanntes Kürzel'  => [array_merge($base, ['entryFromTypes' => ['X']]), 'unbekannte Kürzel „X“'],
+            'entryFromTypes Kürzel kein Text'    => [array_merge($base, ['entryFromTypes' => [1]]), 'Kürzel'],
+            'entryDateField kein Text'           => [array_merge($base, ['entryDateField' => ['BEITRITTSDATUM']]), '„entryDateField“'],
         ];
     }
 

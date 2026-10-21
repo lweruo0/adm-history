@@ -340,6 +340,25 @@ final class HistoryTableRenderer
      * DataTables-Initialisierung und Verarbeitung der Auswahlfelder: Wechsel der Mitgliedsart
      * (mode=change) und Hinzufügen eines Zusatzbeitrags (mode=addfee), jeweils per fetch an index.php.
      */
+    /**
+     * Text für die Rückfrage bei einem Wechsel, der als Vereinsbeitritt gilt; „{date}“ wird im
+     * JavaScript durch den Stichtag ersetzt. Leer, wenn weder gemeinsame Rollen noch ein Feld für
+     * das Beitrittsdatum konfiguriert sind.
+     */
+    private function entryHint(): string
+    {
+        $parts = [];
+        $commonRoles = $this->config->getCommonRoles();
+        if ($commonRoles !== []) {
+            $parts[] = (count($commonRoles) === 1 ? 'die Rolle „' : 'die Rollen „') . implode('“, „', $commonRoles) . '“ beginnt neu am {date}';
+        }
+        if ($this->config->getEntryDateField() !== '') {
+            $parts[] = 'das Beitrittsdatum wird auf {date} gesetzt';
+        }
+
+        return $parts === [] ? '' : ucfirst(implode(', ', $parts)) . '.';
+    }
+
     private function addJavascript(PagePresenter $page, string $pluginUrl, string $csrfToken): void
     {
         $page->addJavascriptFile(ADMIDIO_URL . FOLDER_LIBS . '/datatables/datatables.js');
@@ -367,6 +386,8 @@ final class HistoryTableRenderer
             'csrf'        => $csrfToken,
             'types'       => $types,
             'transitions' => $this->config->getAllTransitions(),
+            'entryFromTypes' => $this->config->getEntryFromTypes(),
+            'entryHint'   => $this->entryHint(),
             'language'    => $languageUrl,
         ], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
@@ -509,6 +530,9 @@ final class HistoryTableRenderer
                     var previous = select.dataset.previous;
                     var question = select.dataset.name + ": Mitgliedsart ab 01.01." + select.dataset.year
                         + " von " + labelOf(previous) + " auf " + labelOf(select.value) + " ändern?";
+                    if (select.value !== "" && settings.entryFromTypes.indexOf(previous) !== -1 && settings.entryHint !== "") {
+                        question += "\n\nVereinsbeitritt: " + settings.entryHint.split("{date}").join("01.01." + select.dataset.year);
+                    }
                     if (!window.confirm(question)) {
                         select.value = previous;
                         return;

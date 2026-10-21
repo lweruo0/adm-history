@@ -22,6 +22,10 @@ use InvalidArgumentException;
  *     Mitgliedschaft, die am Vortag endet, wird fortgesetzt; eine erst später beginnende wird auf D
  *     vorgezogen; sonst wird eine neue Mitgliedschaft ab D angelegt. Dadurch überflüssig gewordene
  *     spätere Mitgliedschaften derselben Rolle werden gelöscht.
+ *   - Neu beginnende Rollen (Teilmenge der gewünschten Rollen, z. B. die gemeinsamen Rollen beim
+ *     Vereinsbeitritt aus der Jugend): die Mitgliedschaft, die am Ende ab D gilt, erhält D als
+ *     Beginn, auch wenn sie vorher schon lief oder am Vortag endete. Früher beendete
+ *     Mitgliedschaften derselben Rolle bleiben unverändert.
  *
  * Mitgliedschaft je Eintrag: ['mem_id' => 1, 'rol_id' => 5, 'begin' => 'Y-m-d', 'end' => 'Y-m-d']
  * Operation: ['action' => 'update', 'mem_id' => 1, 'begin' => ..., 'end' => ...]
@@ -37,9 +41,11 @@ final class MembershipChangePlanner
      * @param string $effectiveDate Stichtag im Format Y-m-d
      * @param string|null $maxEnd  spätestes Ende neuer oder verlängerter Mitgliedschaften (Y-m-d), z. B.
      *                             der 31.12. des Stichtagsjahres für einmalige Beiträge; null = unbegrenzt
+     * @param int[]  $restartRoleIds gewünschte Rollen, deren Mitgliedschaft am Stichtag neu beginnt: der
+     *                               Beginn wird auf D gesetzt, auch wenn sie schon vorher lief
      * @return array<int, array<string, mixed>> Operationen in Ausführungsreihenfolge
      */
-    public function plan(array $existing, array $stopRoleIds, array $targetRoleIds, string $effectiveDate, ?string $maxEnd = null): array
+    public function plan(array $existing, array $stopRoleIds, array $targetRoleIds, string $effectiveDate, ?string $maxEnd = null, array $restartRoleIds = []): array
     {
         $stopRoleIds = array_values(array_diff($stopRoleIds, $targetRoleIds));
         $dayBefore = self::previousDay($effectiveDate);
@@ -64,6 +70,7 @@ final class MembershipChangePlanner
 
         // 2. gewünschte Rollen ab dem Stichtag sicherstellen
         foreach ($targetRoleIds as $roleId) {
+            $restart = in_array($roleId, $restartRoleIds, true);
             $memberships = array_values(array_filter(
                 $existing,
                 static fn(array $membership): bool => $membership['rol_id'] === $roleId
@@ -84,15 +91,20 @@ final class MembershipChangePlanner
             }
 
             if ($covering !== null) {
-                // bestehende Mitgliedschaft nur verlängern, wenn sie kürzer läuft als die beendete
+                // bestehende Mitgliedschaft nur verlängern, wenn sie kürzer läuft als die beendete;
+                // bei Neubeginn außerdem den Beginn auf den Stichtag setzen
+                $begin = $restart ? $effectiveDate : $covering['begin'];
                 $end = $covering['end'];
                 if ($newEnd !== null && $cap($newEnd) > $end) {
                     $end = $cap($newEnd);
-                    $operations[] = ['action' => 'update', 'mem_id' => $covering['mem_id'], 'begin' => $covering['begin'], 'end' => $end];
+                }
+                if ($begin !== $covering['begin'] || $end !== $covering['end']) {
+                    $operations[] = ['action' => 'update', 'mem_id' => $covering['mem_id'], 'begin' => $begin, 'end' => $end];
                 }
             } elseif ($adjacent !== null) {
+                $begin = $restart ? $effectiveDate : $adjacent['begin'];
                 $end = $cap($newEnd ?? YearHistory::OPEN_END);
-                $operations[] = ['action' => 'update', 'mem_id' => $adjacent['mem_id'], 'begin' => $adjacent['begin'], 'end' => $end];
+                $operations[] = ['action' => 'update', 'mem_id' => $adjacent['mem_id'], 'begin' => $begin, 'end' => $end];
             } elseif ($future !== []) {
                 $first = array_shift($future);
                 $end = $cap($newEnd === null ? $first['end'] : max($first['end'], $newEnd));

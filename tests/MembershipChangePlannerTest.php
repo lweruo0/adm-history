@@ -204,6 +204,70 @@ final class MembershipChangePlannerTest extends TestCase
         self::assertSame([], $this->planner->plan($existing, [], [5], '2027-01-01', '2027-12-31'));
     }
 
+    public function testRestartRoleGetsEffectiveDateAsBegin(): void
+    {
+        // Vereinsbeitritt aus der Jugend (Rolle 3): „Mitglied“ lief schon, beginnt aber neu am Stichtag
+        $existing = [
+            self::membership(10, 3, '2015-01-01'),
+            self::membership(11, self::MITGLIED, '2015-01-01'),
+        ];
+
+        $operations = $this->planner->plan($existing, [3], [self::AKTIV, self::MITGLIED], '2027-01-01', null, [self::MITGLIED]);
+
+        self::assertSame([
+            ['action' => 'update', 'mem_id' => 10, 'begin' => '2015-01-01', 'end' => '2026-12-31'],
+            ['action' => 'insert', 'rol_id' => self::AKTIV, 'begin' => '2027-01-01', 'end' => '9999-12-31'],
+            ['action' => 'update', 'mem_id' => 11, 'begin' => '2027-01-01', 'end' => '9999-12-31'],
+        ], $operations);
+
+        // beginnt „Mitglied“ bereits am Stichtag, ist nichts zu tun
+        $existing[1]['begin'] = '2027-01-01';
+        self::assertSame(
+            [['action' => 'update', 'mem_id' => 10, 'begin' => '2015-01-01', 'end' => '2026-12-31']],
+            $this->planner->plan($existing, [3], [self::MITGLIED], '2027-01-01', null, [self::MITGLIED])
+        );
+
+        // Neubeginn und Verlängerung auf das geplante Ende der beendeten Mitgliedschaft zugleich
+        $existing = [
+            self::membership(10, 3, '2015-01-01', '2028-12-31'),
+            self::membership(11, self::MITGLIED, '2015-01-01', '2027-06-30'),
+        ];
+        self::assertSame([
+            ['action' => 'update', 'mem_id' => 10, 'begin' => '2015-01-01', 'end' => '2026-12-31'],
+            ['action' => 'update', 'mem_id' => 11, 'begin' => '2027-01-01', 'end' => '2028-12-31'],
+        ], $this->planner->plan($existing, [3], [self::MITGLIED], '2027-01-01', null, [self::MITGLIED]));
+    }
+
+    public function testRestartRoleContinuesAdjacentMembershipWithNewBegin(): void
+    {
+        $existing = [
+            self::membership(10, 3, '2015-01-01', '2026-12-31'),
+            self::membership(11, self::MITGLIED, '2015-01-01', '2026-12-31'),
+            self::membership(12, self::MITGLIED, '2005-01-01', '2009-12-31'),
+        ];
+
+        $operations = $this->planner->plan($existing, [3], [self::AKTIV, self::MITGLIED], '2027-01-01', null, [self::MITGLIED]);
+
+        // die am Vortag endende Mitgliedschaft wird mit neuem Beginn fortgesetzt, die alte von 2005 bleibt
+        self::assertSame([
+            ['action' => 'insert', 'rol_id' => self::AKTIV, 'begin' => '2027-01-01', 'end' => '9999-12-31'],
+            ['action' => 'update', 'mem_id' => 11, 'begin' => '2027-01-01', 'end' => '9999-12-31'],
+        ], $operations);
+    }
+
+    public function testRestartWithoutMembershipInsertsFromEffectiveDate(): void
+    {
+        $existing = [self::membership(10, 3, '2015-01-01')];
+
+        $operations = $this->planner->plan($existing, [3], [self::AKTIV, self::MITGLIED], '2027-01-01', null, [self::MITGLIED]);
+
+        self::assertSame([
+            ['action' => 'update', 'mem_id' => 10, 'begin' => '2015-01-01', 'end' => '2026-12-31'],
+            ['action' => 'insert', 'rol_id' => self::AKTIV, 'begin' => '2027-01-01', 'end' => '9999-12-31'],
+            ['action' => 'insert', 'rol_id' => self::MITGLIED, 'begin' => '2027-01-01', 'end' => '9999-12-31'],
+        ], $operations);
+    }
+
     public function testPreviousDay(): void
     {
         self::assertSame('2025-12-31', MembershipChangePlanner::previousDay('2026-01-01'));

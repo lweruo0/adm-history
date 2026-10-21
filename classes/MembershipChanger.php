@@ -3,6 +3,7 @@ namespace AdmHistory;
 
 use Admidio\Roles\Entity\Membership;
 use Admidio\Roles\Entity\Role;
+use Admidio\Users\Entity\User;
 use RuntimeException;
 use Throwable;
 
@@ -16,6 +17,10 @@ use Throwable;
  * die Rechte des angemeldeten Benutzers an allen betroffenen Rollen und schreibt die Änderungen
  * in einer Transaktion über die Membership-Entity, damit Änderungsprotokoll und Benachrichtigungen
  * von Admidio erhalten bleiben.
+ *
+ * Gilt der Wechsel als Vereinsbeitritt („entryFromTypes“ in mitgliedsarten.php, z. B. aus der
+ * Jugend), beginnen die gemeinsamen Rollen neu am Stichtag und das Beitrittsdatum im Profilfeld
+ * „entryDateField“ wird über die User-Entity auf den Stichtag gesetzt.
  */
 final class MembershipChanger
 {
@@ -36,7 +41,7 @@ final class MembershipChanger
      * @param array<string, mixed> $user    Person aus HistoryLoader::loadUser()
      * @param int                  $year    Jahr, ab dessen 1. Januar der Wechsel gilt
      * @param MembershipType|null  $newType neue Mitgliedsart oder null für „kein Mitglied“
-     * @return int Anzahl der ausgeführten Datenbankoperationen (0 = nichts zu ändern)
+     * @return int Anzahl der ausgeführten Datenbankoperationen einschließlich des Beitrittsdatums (0 = nichts zu ändern)
      * @throws RuntimeException bei nicht vorgesehenem Wechsel, fehlenden Rechten oder Fehlern beim Speichern
      */
     public function change(array $user, int $year, ?MembershipType $newType): int
@@ -73,10 +78,15 @@ final class MembershipChanger
             ));
         }
 
-        $existing = $this->withoutUntouchedOneTimeFees($user['memberships'], $targetRoleIds, $effectiveDate);
-        $operations = $this->planner->plan($existing, $stopRoleIds, $targetRoleIds, $effectiveDate);
+        // Vereinsbeitritt (z. B. aus der Jugend): gemeinsame Rollen beginnen neu, Beitrittsdatum wird gesetzt
+        $isClubEntry = $this->config->isClubEntry($currentKey, $newKey);
+        $restartRoleIds = $isClubEntry ? $this->loader->getCommonRoleIds() : [];
+        $entryDate = $isClubEntry && $this->config->getEntryDateField() !== '' ? $effectiveDate : null;
 
-        return $this->apply($user, $operations);
+        $existing = $this->withoutUntouchedOneTimeFees($user['memberships'], $targetRoleIds, $effectiveDate);
+        $operations = $this->planner->plan($existing, $stopRoleIds, $targetRoleIds, $effectiveDate, null, $restartRoleIds);
+
+        return $this->apply($user, $operations, $entryDate);
     }
 
     /**
@@ -173,20 +183,23 @@ final class MembershipChanger
     }
 
     /**
-     * Prüft die Rechte an allen betroffenen Rollen und führt die Operationen in einer Transaktion aus.
+     * Prüft die Rechte an allen betroffenen Rollen und führt die Operationen in einer Transaktion aus;
+     * dazu wird bei Bedarf das Beitrittsdatum im Profil gesetzt.
      *
      * @param array<string, mixed>             $user
      * @param array<int, array<string, mixed>> $operations
-     * @return int Anzahl der ausgeführten Operationen
+     * @param string|null                      $entryDate Beitrittsdatum (Y-m-d) für das Profilfeld „entryDateField“, null = nicht setzen
+     * @return int Anzahl der ausgeführten Operationen (das Beitrittsdatum zählt als eine)
      * @throws RuntimeException
      */
-    private function apply(array $user, array $operations): int
+    private function apply(array $user, array $operations, ?string $entryDate = null): int
     {
-        if ($operations === []) {
+        if ($operations === [] && $entryDate === null) {
             return 0;
         }
 
         $this->assertAssignRights($this->affectedRoleIds($operations, $user['memberships']));
+        $userEntity = $entryDate === null ? null : $this->entryDateUser((int) $user['usr_id']);
 
         $db = $this->context->db;
         $db->startTransaction();
@@ -194,13 +207,43 @@ final class MembershipChanger
             foreach ($operations as $operation) {
                 $this->execute($operation, (int) $user['usr_id']);
             }
+            if ($userEntity !== null) {
+                // Y-m-d wird von der ProfileFields-Klasse neben dem Anzeigeformat von Admidio akzeptiert
+                $userEntity->setValue($this->config->getEntryDateField(), $entryDate);
+                $userEntity->save();
+            }
             $db->endTransaction();
         } catch (Throwable $ex) {
             $db->rollback();
             throw new RuntimeException('Die Änderung konnte nicht gespeichert werden: ' . $ex->getMessage(), 0, $ex);
         }
 
-        return count($operations);
+        return count($operations) + ($userEntity === null ? 0 : 1);
+    }
+
+    /**
+     * Lädt die Person als User-Entity für das Beitrittsdatum und prüft vorher, ob das konfigurierte
+     * Profilfeld existiert, ein Datumsfeld ist und der angemeldete Benutzer das Profil bearbeiten darf.
+     *
+     * @throws RuntimeException
+     */
+    private function entryDateUser(int $usrId): User
+    {
+        $field = $this->config->getEntryDateField();
+        $profileFields = $this->context->profileFields;
+        if ((int) $profileFields->getProperty($field, 'usf_id') === 0) {
+            throw new RuntimeException('Das Profilfeld „' . $field . '“ für das Beitrittsdatum existiert nicht (siehe „entryDateField“ in mitgliedsarten.php).');
+        }
+        if ($profileFields->getProperty($field, 'usf_type') !== 'DATE') {
+            throw new RuntimeException('Das Profilfeld „' . $field . '“ für das Beitrittsdatum ist kein Datumsfeld.');
+        }
+
+        $userEntity = new User($this->context->db, $profileFields, $usrId);
+        if (!$this->context->currentUser->hasRightEditProfile($userEntity)) {
+            throw new RuntimeException('Keine Berechtigung, das Beitrittsdatum im Profil dieser Person zu ändern.');
+        }
+
+        return $userEntity;
     }
 
     /**

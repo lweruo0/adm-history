@@ -14,7 +14,10 @@
  *     werden sie ebenfalls beendet,
  *   - die Pflicht-Beitragsrollen (mandatoryFeeRoles) der neuen Mitgliedsart werden begonnen,
  *     optionale Beitragsrollen (optionalFeeRoles) der neuen Mitgliedsart bleiben, alle übrigen
- *     Beitragsrollen werden beendet.
+ *     Beitragsrollen werden beendet,
+ *   - gilt der Wechsel als Vereinsbeitritt (entryFromTypes, z. B. aus der Jugend), beginnen die
+ *     gemeinsamen Rollen neu am Stichtag und das Beitrittsdatum (Profilfeld entryDateField) wird
+ *     auf den Stichtag gesetzt.
  *
  * Die Reihenfolge der Mitgliedsarten bestimmt die Reihenfolge in der Auswahl und in der Legende.
  * Eine Mitgliedsart kann mehrere Rollen umfassen, z. B. 'roles' => ['Aktiv', 'Bootsbeitrag'].
@@ -47,6 +50,18 @@ return [
         'J' => ['A', 'F', 'P', ''],
         'P' => ['A', 'F', '', 'E'],
     ],
+
+    // Vereinsbeitritt: Wechselt jemand von einer dieser Mitgliedsarten zu einer anderen (nicht beim
+    // Austritt), gilt das als Eintritt in den Verein. Die gemeinsamen Rollen (commonRoles) beginnen
+    // dann neu am 1. Januar des gewählten Jahres, auch wenn die Person schon vorher darin war, und
+    // das Beitrittsdatum wird auf diesen Tag gesetzt. '' steht für „kein Mitglied“ (Neueintritt).
+    // Leer oder weggelassen: kein Wechsel gilt als Beitritt.
+    'entryFromTypes' => ['J'],
+
+    // Interner Name des Admidio-Profilfelds (Typ Datum) für das Beitrittsdatum; zu finden unter
+    // Administration → Profilfelder, Feld „Interner Name“. Leer oder weggelassen: das Beitrittsdatum
+    // wird nicht gesetzt.
+    'entryDateField' => 'BEITRITTSDATUM',
 
     // Pflicht-Beitragsrollen je Mitgliedsart: beim Wechsel zu der Mitgliedsart werden sie ab dem
     // 1. Januar begonnen, beim Wechsel weg von ihr (oder beim Austritt) am 31. Dezember des
@@ -81,8 +96,8 @@ return [
         'Ehren',
         'Förder',
         'Summe' => ['Aktiv', 'Passiv', 'Jugend', 'Ehren', 'Förder'],
-        'Mitglied2' => ['Mitglied', 'Jugend'],
-        'Mitglied',
+        'Mitglied' => ['Mitglied', 'Jugend'],
+        'Mitglied o. Jugend' => ['Mitglied'],
     ],
 
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).

@@ -136,7 +136,12 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
     übrigen Beitragsrollen enden am Vortag; bei `–` enden alle Beitragsrollen,
   - einmalige Beitragsrollen werden nicht ins Wechseljahr übernommen: eine vor dem Stichtag
     begonnene endet am Vortag, eine ab dem Stichtag begonnene bleibt unverändert (der Beitrag gilt
-    nur in seinem Jahr).
+    nur in seinem Jahr),
+  - gilt der Wechsel als Vereinsbeitritt (`entryFromTypes`, z. B. von Jugend zu Aktiv), beginnen die
+    gemeinsamen Rollen neu am Stichtag: eine schon laufende oder am Vortag endende Mitgliedschaft
+    erhält den Stichtag als Beginn, früher beendete bleiben unverändert. Zusätzlich wird das
+    Beitrittsdatum im Profilfeld `entryDateField` auf den Stichtag gesetzt (dafür ist das Recht
+    zum Bearbeiten des Profils nötig). Die Rückfrage weist auf beides hin.
 
   Die Änderung wird ohne Neuladen der Seite gespeichert; beide änderbaren Spalten der Zeile und die
   Spalten „Zusatz“ werden danach aktualisiert. Schlägt sie fehl (z. B. fehlendes Recht an einer Rolle), erscheint die
@@ -187,6 +192,8 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
 | `mandatoryFeeRoles` | Pflicht-Beitragsrollen je Kürzel (Rolle oder Liste). Beim Wechsel zu der Mitgliedsart werden sie begonnen, beim Wechsel weg von ihr oder beim Austritt beendet. Mitgliedsarten ohne Pflicht-Beitragsrolle können fehlen. Beitragsrollen dürfen keine Rollen einer Mitgliedsart und keine gemeinsamen Rollen sein. |
 | `optionalFeeRoles` | Optionale Beitragsrollen (Zusatzbeiträge) je Kürzel. Sie werden beim Wechsel nicht begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie. Für das aktuelle Jahr und das Folgejahr erscheinen sie in der Spalte „Zusatz“. Rollen mit Beitragszeitraum „einmalig“ gelten nur im Jahr ihres Beginns und werden bei einem Wechsel nicht ins Folgejahr übernommen. Eine Rolle darf bei mehreren Mitgliedsarten stehen, aber nicht zugleich Pflicht und optional derselben Mitgliedsart sein. |
 | `transitions` | Erlaubte Wechsel in der Auswahl: bisheriges Kürzel => neues Kürzel oder Liste neuer Kürzel. `''` steht für „kein Mitglied“ (als Schlüssel: Eintritt, als Ziel: Austritt), `'*'` für alle Ziele. Beibehalten ist immer erlaubt. Fehlt der Schlüssel, ist jeder Wechsel erlaubt; ist er vorhanden, erlaubt ein nicht genanntes bisheriges Kürzel keinen Wechsel (die Auswahl ist dann gesperrt). |
+| `entryFromTypes` | Kürzel, deren Wechsel zu einer anderen Mitgliedsart als Vereinsbeitritt gilt (z. B. `['J']`: aus der Jugend). Die gemeinsamen Rollen beginnen dann neu am 1. Januar des gewählten Jahres und das Beitrittsdatum wird gesetzt. `''` steht für „kein Mitglied“ (Neueintritt). Ein Austritt ist nie ein Beitritt. Leer oder fehlend: kein Wechsel gilt als Beitritt. |
+| `entryDateField` | Interner Name des Admidio-Profilfelds (Typ Datum) für das Beitrittsdatum (Administration → Profilfelder, „Interner Name“). Beim Vereinsbeitritt wird es auf den 1. Januar des gewählten Jahres gesetzt. Leer oder fehlend: das Beitrittsdatum wird nicht gesetzt. Fehlt das Feld in Admidio oder ist es kein Datumsfeld, scheitert der Wechsel mit einer Fehlermeldung. |
 | `overviewRoles` | Zeilen der Kacheln auf der Übersichtsseite in Anzeigereihenfolge. Ein Eintrag ist ein Rollenname (Beschriftung = Rollenname) oder Beschriftung => Rolle bzw. Liste von Rollen; bei mehreren Rollen zählt jede Person, die in mindestens einer davon ist, einmal. Die Rollen müssen nicht zu einer Mitgliedsart gehören. Fehlt der Schlüssel, zeigt die Kachel einen Hinweis. |
 | `historyYears` | Standard für „Jahre zurück“ (0 = alle Jahre). |
 

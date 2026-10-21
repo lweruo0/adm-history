@@ -36,6 +36,17 @@ final class MembershipTypeConfig
     private array $overviewRows = [];
 
     /**
+     * Kürzel, deren Wechsel zu einer anderen Mitgliedsart als Vereinsbeitritt gilt ('' = Eintritt
+     * ohne vorherige Mitgliedsart): die gemeinsamen Rollen beginnen dann neu am Stichtag und das
+     * Beitrittsdatum wird gesetzt
+     * @var string[]
+     */
+    private array $entryFromTypes = [];
+
+    /** Interner Name des Profilfelds für das Beitrittsdatum; '' = kein Feld */
+    private string $entryDateField = '';
+
+    /**
      * @param array<string, mixed> $config Inhalt von mitgliedsarten.php
      * @throws InvalidArgumentException bei ungültiger Konfiguration
      */
@@ -111,6 +122,42 @@ final class MembershipTypeConfig
         }
 
         $this->overviewRows = self::overviewRowList($config['overviewRoles'] ?? []);
+        $this->entryFromTypes = $this->typeKeyList($config['entryFromTypes'] ?? [], '„entryFromTypes“');
+
+        $entryDateField = $config['entryDateField'] ?? '';
+        if (!is_string($entryDateField)) {
+            throw new InvalidArgumentException('Konfiguration: „entryDateField“ muss der interne Name eines Profilfelds sein.');
+        }
+        $this->entryDateField = trim($entryDateField);
+    }
+
+    /**
+     * Prüft eine Liste von Kürzeln ('' = kein Mitglied erlaubt), ohne Doppelte.
+     *
+     * @return string[]
+     * @throws InvalidArgumentException
+     */
+    private function typeKeyList(mixed $keys, string $context): array
+    {
+        if (is_string($keys)) {
+            $keys = [$keys];
+        }
+        if (!is_array($keys)) {
+            throw new InvalidArgumentException('Konfiguration: ' . $context . ' muss ein Array von Kürzeln sein.');
+        }
+        $result = [];
+        foreach ($keys as $key) {
+            if (!is_string($key)) {
+                throw new InvalidArgumentException('Konfiguration: ' . $context . ' muss Kürzel enthalten.');
+            }
+            $key = trim($key);
+            if ($key !== '' && !isset($this->types[$key])) {
+                throw new InvalidArgumentException('Konfiguration: ' . $context . ' nennt das unbekannte Kürzel „' . $key . '“.');
+            }
+            $result[] = $key;
+        }
+
+        return array_values(array_unique($result));
     }
 
     /**
@@ -355,6 +402,27 @@ final class MembershipTypeConfig
     public function isTransitionAllowed(string $from, string $to): bool
     {
         return $from === $to || in_array($to, $this->getAllowedTargets($from), true);
+    }
+
+    /** @return string[] Kürzel, deren Wechsel zu einer anderen Mitgliedsart als Vereinsbeitritt gilt ('' = Eintritt) */
+    public function getEntryFromTypes(): array
+    {
+        return $this->entryFromTypes;
+    }
+
+    /** Interner Name des Profilfelds für das Beitrittsdatum oder '' (kein Feld konfiguriert). */
+    public function getEntryDateField(): string
+    {
+        return $this->entryDateField;
+    }
+
+    /**
+     * Gilt der Wechsel von $from nach $to als Vereinsbeitritt (siehe „entryFromTypes“)? Ein Austritt
+     * ($to === '') oder ein Beibehalten ist nie ein Beitritt.
+     */
+    public function isClubEntry(string $from, string $to): bool
+    {
+        return $to !== '' && $from !== $to && in_array($from, $this->entryFromTypes, true);
     }
 
     /**
