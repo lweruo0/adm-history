@@ -337,10 +337,6 @@ final class HistoryTableRenderer
     }
 
     /**
-     * DataTables-Initialisierung und Verarbeitung der Auswahlfelder: Wechsel der Mitgliedsart
-     * (mode=change) und Hinzufügen eines Zusatzbeitrags (mode=addfee), jeweils per fetch an index.php.
-     */
-    /**
      * Text für die Rückfrage bei einem Wechsel, der als Vereinsbeitritt gilt; „{date}“ wird im
      * JavaScript durch den Stichtag ersetzt. Leer, wenn weder gemeinsame Rollen noch ein Feld für
      * das Beitrittsdatum konfiguriert sind.
@@ -350,7 +346,9 @@ final class HistoryTableRenderer
         $parts = [];
         $commonRoles = $this->config->getCommonRoles();
         if ($commonRoles !== []) {
-            $parts[] = (count($commonRoles) === 1 ? 'die Rolle „' : 'die Rollen „') . implode('“, „', $commonRoles) . '“ beginnt neu am {date}';
+            $parts[] = count($commonRoles) === 1
+                ? 'die Rolle „' . $commonRoles[0] . '“ beginnt neu am {date}'
+                : 'die Rollen „' . implode('“, „', $commonRoles) . '“ beginnen neu am {date}';
         }
         if ($this->config->getEntryDateField() !== '') {
             $parts[] = 'das Beitrittsdatum wird auf {date} gesetzt';
@@ -359,6 +357,10 @@ final class HistoryTableRenderer
         return $parts === [] ? '' : ucfirst(implode(', ', $parts)) . '.';
     }
 
+    /**
+     * DataTables-Initialisierung und Verarbeitung der Auswahlfelder: Wechsel der Mitgliedsart
+     * (mode=change) und Hinzufügen eines Zusatzbeitrags (mode=addfee), jeweils per fetch an index.php.
+     */
     private function addJavascript(PagePresenter $page, string $pluginUrl, string $csrfToken): void
     {
         $page->addJavascriptFile(ADMIDIO_URL . FOLDER_LIBS . '/datatables/datatables.js');
