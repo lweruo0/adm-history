@@ -61,7 +61,7 @@ return [
     // Interner Name des Admidio-Profilfelds (Typ Datum) für das Beitrittsdatum; zu finden unter
     // Administration → Profilfelder, Feld „Interner Name“. Leer oder weggelassen: das Beitrittsdatum
     // wird nicht gesetzt.
-    'entryDateField' => 'PMB_ACCESSION',
+    'entryDateField' => 'ACCESSION1',
 
     // Pflicht-Beitragsrollen je Mitgliedsart: beim Wechsel zu der Mitgliedsart werden sie ab dem
     // 1. Januar begonnen, beim Wechsel weg von ihr (oder beim Austritt) am 31. Dezember des
