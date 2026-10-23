@@ -155,6 +155,9 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   oder nach dem Stichtag liegt; geplante Mitgliedschaften (z. B. Eintritt zum Folgejahr) zählen
   also am 1. Januar des Folgejahres. Die Überschrift der Kachel verlinkt auf die Mitglieder-Historie.
   Die Kacheln sehen nur angemeldete Administratoren.
+- **Listen aus den Übersichtskacheln**: Die Listen zu Eintritten, Austritten, unterjährigen
+  Bewegungen und Rollenwechseln zeigen die Mitgliedsnummer aus dem Admidio-Profilfeld
+  `MEMBERNUMBER1` neben Vor- und Nachname. Fehlt eine Nummer bei einer Person, bleibt die Zelle leer.
 - **Unterjährige Ein- und Austritte je Zeile**: Gab es in einer Zeile Bewegungen zwischen den
   Stichtagen, steht in der vierten Spalte ein kleiner Button mit der Anzahl der Personen. Er öffnet
   in einer neuen Registerkarte die Liste dieser Personen (Nachname, Vorname mit Link zum Profil,

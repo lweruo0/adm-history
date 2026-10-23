@@ -11,7 +11,7 @@ use RuntimeException;
  * übrigen Klassen ohne Admidio getestet werden können.
  *
  * Person je Eintrag (Schlüssel usr_uuid):
- *   usr_id, usr_uuid, first_name, last_name,
+ *   usr_id, usr_uuid, first_name, last_name, member_number,
  *   memberships: Liste aus mem_id, rol_id, begin, end (Y-m-d, offen = 9999-12-31), aufsteigend nach Beginn
  */
 final class MembershipRepository
@@ -79,7 +79,7 @@ final class MembershipRepository
      * (auch beendeten) Mitgliedschaften in diesen Rollen.
      *
      * @param int[] $roleIds
-     * @return array<string, array{usr_id:int, usr_uuid:string, first_name:string, last_name:string, memberships:array<int, array{mem_id:int, rol_id:int, begin:string, end:string}>}>
+     * @return array<string, array{usr_id:int, usr_uuid:string, first_name:string, last_name:string, member_number:string, memberships:array<int, array{mem_id:int, rol_id:int, begin:string, end:string}>}>
      */
     public function getMembersWithMemberships(array $roleIds): array
     {
@@ -99,7 +99,7 @@ final class MembershipRepository
      * mit leerer Liste geliefert.
      *
      * @param int[] $roleIds
-     * @return array{usr_id:int, usr_uuid:string, first_name:string, last_name:string, memberships:array<int, array{mem_id:int, rol_id:int, begin:string, end:string}>}|null
+     * @return array{usr_id:int, usr_uuid:string, first_name:string, last_name:string, member_number:string, memberships:array<int, array{mem_id:int, rol_id:int, begin:string, end:string}>}|null
      */
     public function getMemberByUuid(string $usrUuid, array $roleIds): ?array
     {
@@ -126,6 +126,7 @@ final class MembershipRepository
             'usr_uuid'    => $usrUuid,
             'first_name'  => $names[(int) $rows[0]['usr_id']]['first_name'] ?? '',
             'last_name'   => $names[(int) $rows[0]['usr_id']]['last_name'] ?? '',
+            'member_number' => $names[(int) $rows[0]['usr_id']]['member_number'] ?? '',
             'memberships' => [],
         ];
     }
@@ -185,7 +186,7 @@ final class MembershipRepository
      * ergänzt Vor- und Nachname.
      *
      * @param array<int, mixed> $params
-     * @return array<string, array{usr_id:int, usr_uuid:string, first_name:string, last_name:string, memberships:array<int, array{mem_id:int, rol_id:int, begin:string, end:string}>}>
+     * @return array<string, array{usr_id:int, usr_uuid:string, first_name:string, last_name:string, member_number:string, memberships:array<int, array{mem_id:int, rol_id:int, begin:string, end:string}>}>
      */
     private function loadMembers(string $where, array $params): array
     {
@@ -204,6 +205,7 @@ final class MembershipRepository
                 'usr_uuid'    => (string) $row['usr_uuid'],
                 'first_name'  => '',
                 'last_name'   => '',
+                'member_number' => '',
                 'memberships' => [],
             ];
             $byId[$usrId]['memberships'][] = [
@@ -219,6 +221,7 @@ final class MembershipRepository
         foreach ($byId as $usrId => $member) {
             $member['first_name'] = $names[$usrId]['first_name'] ?? '';
             $member['last_name'] = $names[$usrId]['last_name'] ?? '';
+            $member['member_number'] = $names[$usrId]['member_number'] ?? '';
             $members[$member['usr_uuid']] = $member;
         }
 
@@ -226,10 +229,11 @@ final class MembershipRepository
     }
 
     /**
-     * Lädt Vor- und Nachname der Benutzer aus den Profilfeldern FIRST_NAME und LAST_NAME.
+     * Lädt Namen und Mitgliedsnummer der Benutzer aus den Profilfeldern FIRST_NAME, LAST_NAME
+     * und MEMBERNUMBER1.
      *
      * @param int[] $usrIds
-     * @return array<int, array{first_name:string, last_name:string}>
+     * @return array<int, array{first_name:string, last_name:string, member_number:string}>
      */
     private function loadNames(array $usrIds): array
     {
@@ -239,16 +243,21 @@ final class MembershipRepository
 
         $firstNameId = (int) $this->context->profileFields->getProperty('FIRST_NAME', 'usf_id');
         $lastNameId = (int) $this->context->profileFields->getProperty('LAST_NAME', 'usf_id');
+        $memberNumberId = (int) $this->context->profileFields->getProperty('MEMBERNUMBER1', 'usf_id');
 
         $sql = 'SELECT usd_usr_id, usd_usf_id, usd_value
                   FROM ' . TBL_USER_DATA . '
-                 WHERE usd_usf_id IN (?, ?)
+                 WHERE usd_usf_id IN (?, ?, ?)
                    AND usd_usr_id IN (' . self::placeholders($usrIds) . ')';
         $names = [];
-        foreach ($this->query($sql, array_merge([$firstNameId, $lastNameId], array_values($usrIds))) as $row) {
+        foreach ($this->query($sql, array_merge([$firstNameId, $lastNameId, $memberNumberId], array_values($usrIds))) as $row) {
             $usrId = (int) $row['usd_usr_id'];
-            $names[$usrId] ??= ['first_name' => '', 'last_name' => ''];
-            $key = (int) $row['usd_usf_id'] === $firstNameId ? 'first_name' : 'last_name';
+            $names[$usrId] ??= ['first_name' => '', 'last_name' => '', 'member_number' => ''];
+            $key = match ((int) $row['usd_usf_id']) {
+                $firstNameId => 'first_name',
+                $lastNameId => 'last_name',
+                default => 'member_number',
+            };
             $names[$usrId][$key] = (string) ($row['usd_value'] ?? '');
         }
 
