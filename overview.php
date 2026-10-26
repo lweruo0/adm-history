@@ -192,12 +192,13 @@ try {
             foreach ($counter->roleChangesInYear($periods, $roleIds, $getListYear) as $change) {
                 $member = $memberByUsrId[$change['usr_id']];
                 $entries[] = [
-                    'usr_uuid'   => $member['usr_uuid'],
-                    'first_name' => $member['first_name'],
-                    'last_name'  => $member['last_name'],
-                    'before'     => $toNames($change['before']),
-                    'after'      => $toNames($change['after']),
-                    'date'       => $change['date'],
+                    'usr_uuid'      => $member['usr_uuid'],
+                    'first_name'    => $member['first_name'],
+                    'last_name'     => $member['last_name'],
+                    'member_number' => $member['member_number'],
+                    'before'        => $toNames($change['before']),
+                    'after'         => $toNames($change['after']),
+                    'date'          => $change['date'],
                 ];
             }
             (new ChangeListRenderer())->renderSwitches($listPage, $entries, $roleNames, $getListYear);
@@ -219,12 +220,13 @@ try {
             }
             $member = $memberByUsrId[$change['usr_id']];
             $entries[] = [
-                'usr_uuid'   => $member['usr_uuid'],
-                'first_name' => $member['first_name'],
-                'last_name'  => $member['last_name'],
-                'roles'      => array_map(static fn(int $rolId): string => $roleNameById[$rolId], $roleIdsByUser[$change['usr_id']] ?? []),
-                'begin'      => $change['begin'],
-                'end'        => $change['end'],
+                'usr_uuid'      => $member['usr_uuid'],
+                'first_name'    => $member['first_name'],
+                'last_name'     => $member['last_name'],
+                'member_number' => $member['member_number'],
+                'roles'         => array_map(static fn(int $rolId): string => $roleNameById[$rolId], $roleIdsByUser[$change['usr_id']] ?? []),
+                'begin'         => $change['begin'],
+                'end'           => $change['end'],
             ];
         }
 

@@ -15,7 +15,7 @@ use DateTimeImmutable;
  * (renderDifferences) zeigt die Personen, die am 1. Januar oder am 31. Dezember nur in einer von
  * zwei Kachelzeilen sind, siehe MemberCounter::differencesInYear().
  *
- * Eintrag je Person: first_name, last_name, usr_uuid, roles (Rollennamen im Jahr), begin
+ * Eintrag je Person: first_name, last_name, member_number, usr_uuid, roles (Rollennamen im Jahr), begin
  * (Eintrittsdatum Y-m-d oder null), end (Austrittsdatum Y-m-d oder null),
  * siehe MemberCounter::changesInYear().
  */
@@ -38,7 +38,7 @@ final class ChangeListRenderer
     ];
 
     /**
-     * @param array<int, array{usr_uuid:string, first_name:string, last_name:string, roles:string[], begin:?string, end:?string}> $entries
+     * @param array<int, array{usr_uuid:string, first_name:string, last_name:string, member_number:string, roles:string[], begin:?string, end:?string}> $entries
      * @param string                                                                                                            $label     Beschriftung der Kachelzeile bzw. der Kachel
      * @param string[]                                                                                                          $roleNames Rollen, auf die sich die Liste bezieht
      * @param string                                                                                                            $kind      eine der KIND_*-Konstanten
@@ -78,10 +78,11 @@ final class ChangeListRenderer
         }
 
         $html .= '<table class="table table-hover table-sm">'
-            . '<thead><tr><th>Nachname</th><th>Vorname</th><th>Rollen</th><th>Eintritt</th><th>Austritt</th></tr></thead><tbody>';
+            . '<thead><tr><th>Mitgliedsnummer</th><th>Nachname</th><th>Vorname</th><th>Rollen</th><th>Eintritt</th><th>Austritt</th></tr></thead><tbody>';
         foreach ($entries as $entry) {
             $profileUrl = SecurityUtils::encodeUrl(ADMIDIO_URL . FOLDER_MODULES . '/profile/profile.php', ['user_uuid' => $entry['usr_uuid']]);
             $html .= '<tr>'
+                . '<td>' . $e($entry['member_number']) . '</td>'
                 . '<td><a href="' . $profileUrl . '">' . $e($entry['last_name']) . '</a></td>'
                 . '<td><a href="' . $profileUrl . '">' . $e($entry['first_name']) . '</a></td>'
                 . '<td>' . $e(implode(', ', $entry['roles'])) . '</td>'
@@ -99,7 +100,7 @@ final class ChangeListRenderer
     /**
      * Liste der Rollenwechsel (Art „switched“): Nachname, Vorname, Rollen vorher, Rollen nachher, Datum.
      *
-     * @param array<int, array{usr_uuid:string, first_name:string, last_name:string, before:string[], after:string[], date:?string}> $entries
+     * @param array<int, array{usr_uuid:string, first_name:string, last_name:string, member_number:string, before:string[], after:string[], date:?string}> $entries
      * @param string[]                                                                                                           $roleNames Rollen der Kachel
      */
     public function renderSwitches(PagePresenter $page, array $entries, array $roleNames, int $year): void
@@ -124,10 +125,11 @@ final class ChangeListRenderer
         }
 
         $html .= '<table class="table table-hover table-sm">'
-            . '<thead><tr><th>Nachname</th><th>Vorname</th><th>Vorher</th><th>Nachher</th><th>Datum</th></tr></thead><tbody>';
+            . '<thead><tr><th>Mitgliedsnummer</th><th>Nachname</th><th>Vorname</th><th>Vorher</th><th>Nachher</th><th>Datum</th></tr></thead><tbody>';
         foreach ($entries as $entry) {
             $profileUrl = SecurityUtils::encodeUrl(ADMIDIO_URL . FOLDER_MODULES . '/profile/profile.php', ['user_uuid' => $entry['usr_uuid']]);
             $html .= '<tr>'
+                . '<td>' . $e($entry['member_number']) . '</td>'
                 . '<td><a href="' . $profileUrl . '">' . $e($entry['last_name']) . '</a></td>'
                 . '<td><a href="' . $profileUrl . '">' . $e($entry['first_name']) . '</a></td>'
                 . '<td>' . $e(implode(', ', $entry['before'])) . '</td>'
