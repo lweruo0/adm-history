@@ -70,6 +70,7 @@ return [
         'A' => ['Aktivbeitrag'],
         'J' => ['Jugendbeitrag'],
         'P' => ['Passivbeitrag'],
+        'E' => ['Ehrenbeitrag']
     ],
 
     // Optionale Beitragsrollen (Zusatzbeiträge) je Mitgliedsart: sie werden beim Wechsel nicht
@@ -99,6 +100,12 @@ return [
         'Mitglied' => ['Mitglied', 'Jugend'],
         'Mitglied o. Jugend' => ['Mitglied'],
     ],
+
+    // Button „Differenz“ unter der Tabelle jeder Kachel: zwei Beschriftungen aus „overviewRoles“.
+    // Aufgelistet werden die Personen, die am 1. Januar oder am 31. Dezember nur in einer der beiden
+    // Zeilen sind (z. B. in einer Mitgliedsart-Rolle, aber nicht in „Mitglied“, oder umgekehrt).
+    // Leer oder weggelassen: kein Button.
+    'overviewDifference' => ['Summe', 'Mitglied'],
 
     // Anzahl der Jahre vor dem aktuellen Jahr, die standardmäßig angezeigt werden (0 = alle).
     // In der Übersicht kann der Zeitraum jederzeit umgestellt werden.

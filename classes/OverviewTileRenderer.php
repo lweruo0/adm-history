@@ -10,16 +10,17 @@ namespace AdmHistory;
  * und kein übersetztes Template zwischengespeichert wird. Die Klasse kennt kein Admidio.
  *
  * Unter der Tabelle stehen die Buttons „Eintritte“, „Austritte“ und „Wechsel“ für alle Rollen der
- * Kachel zusammen.
+ * Kachel zusammen sowie, falls konfiguriert, der Button „Differenz“ für den Vergleich zweier Zeilen.
  *
  * Kachel je Eintrag: key (previous/current/next), year, label (z. B. „Folgejahr“), rows mit
  * label, begin, end, changes (siehe MemberCounter::yearTable()) und url (Link zur Liste oder ''),
- * joined, left und switched jeweils mit count und url (Liste der Eintritte, Austritte, Wechsel).
+ * joined, left und switched jeweils mit count und url (Liste der Eintritte, Austritte, Wechsel),
+ * optional difference mit count, url und labels (die beiden verglichenen Zeilen) oder null.
  */
 final class OverviewTileRenderer
 {
     /**
-     * @param array<int, array{key:string, year:int, label:string, rows:array<int, array{label:string, begin:int, end:int, changes:int, url:string}>, joined:array{count:int, url:string}, left:array{count:int, url:string}, switched:array{count:int, url:string}}> $tiles
+     * @param array<int, array{key:string, year:int, label:string, rows:array<int, array{label:string, begin:int, end:int, changes:int, url:string}>, joined:array{count:int, url:string}, left:array{count:int, url:string}, switched:array{count:int, url:string}, difference?:?array{count:int, url:string, labels:array{0:string, 1:string}}}> $tiles
      * @param string $pluginName Ordnername des Plugins (für die HTML-IDs)
      * @param string $historyUrl URL der Mitglieder-Historie (Ziel der Überschrift)
      */
@@ -54,26 +55,43 @@ final class OverviewTileRenderer
                 . '<div class="d-flex flex-wrap gap-2 mb-2">'
                 . $this->kindButton('Eintritte', 'bi-box-arrow-in-right', $tile['joined'], $tile['year'])
                 . $this->kindButton('Austritte', 'bi-box-arrow-right', $tile['left'], $tile['year'])
-                . $this->kindButton('Wechsel', 'bi-arrow-left-right', $tile['switched'], $tile['year'])
-                . '</div></div>';
+                . $this->kindButton('Wechsel', 'bi-arrow-left-right', $tile['switched'], $tile['year']);
+            $difference = $tile['difference'] ?? null;
+            if ($difference !== null) {
+                $pair = '„' . $difference['labels'][0] . '“ und „' . $difference['labels'][1] . '“';
+                $html .= $this->kindButton(
+                    'Differenz',
+                    'bi-exclamation-triangle',
+                    $difference,
+                    $tile['year'],
+                    'Keine Differenz zwischen ' . $pair . ' ' . $tile['year'],
+                    'Differenz zwischen ' . $pair . ' ' . $tile['year'] . ': Personen, die am 1. Januar oder am 31. Dezember '
+                        . 'nur in einer der beiden Zeilen sind, in neuer Registerkarte anzeigen'
+                );
+            }
+            $html .= '</div></div>';
         }
 
         return $html;
     }
 
     /**
-     * Button „Eintritte“ bzw. „Austritte“ mit Anzahl; ohne Personen inaktiv.
+     * Button „Eintritte“, „Austritte“, „Wechsel“ oder „Differenz“ mit Anzahl; ohne Personen inaktiv.
+     *
      * @param array{count:int, url:string} $kind
+     * @param string|null                  $emptyTitle Tooltip des inaktiven Buttons (Standard: „Keine <label> <year>“)
+     * @param string|null                  $title      Tooltip des Links (Standard: „<label> <year> in neuer Registerkarte anzeigen“)
      */
-    private function kindButton(string $label, string $icon, array $kind, int $year): string
+    private function kindButton(string $label, string $icon, array $kind, int $year, ?string $emptyTitle = null, ?string $title = null): string
     {
         $text = '<i class="bi ' . $icon . '"></i> ' . $label . ' (' . $kind['count'] . ')';
         if ($kind['count'] <= 0 || $kind['url'] === '') {
-            return '<span class="btn btn-sm btn-secondary disabled" aria-disabled="true" title="Keine ' . $label . ' ' . $year . '">' . $text . '</span>';
+            return '<span class="btn btn-sm btn-secondary disabled" aria-disabled="true" title="'
+                . Html::escape($emptyTitle ?? 'Keine ' . $label . ' ' . $year) . '">' . $text . '</span>';
         }
 
         return '<a class="btn btn-sm btn-secondary" href="' . Html::escape($kind['url']) . '" target="_blank" rel="noopener" title="'
-            . $label . ' ' . $year . ' in neuer Registerkarte anzeigen">' . $text . '</a>';
+            . Html::escape($title ?? $label . ' ' . $year . ' in neuer Registerkarte anzeigen') . '">' . $text . '</a>';
     }
 
     /**

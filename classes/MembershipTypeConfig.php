@@ -36,6 +36,13 @@ final class MembershipTypeConfig
     private array $overviewRows = [];
 
     /**
+     * Zwei Zeilen der Übersichtskacheln (Beschriftungen aus „overviewRoles“), deren Personen am
+     * Stichtag verglichen werden (Button „Differenz“); null = kein Vergleich
+     * @var array{0:string, 1:string}|null
+     */
+    private ?array $overviewDifference = null;
+
+    /**
      * Kürzel, deren Wechsel zu einer anderen Mitgliedsart als Vereinsbeitritt gilt ('' = Eintritt
      * ohne vorherige Mitgliedsart): die gemeinsamen Rollen beginnen dann neu am Stichtag und das
      * Beitrittsdatum wird gesetzt
@@ -122,6 +129,7 @@ final class MembershipTypeConfig
         }
 
         $this->overviewRows = self::overviewRowList($config['overviewRoles'] ?? []);
+        $this->overviewDifference = self::overviewDifferencePair($config['overviewDifference'] ?? null, $this->overviewRows);
         $this->entryFromTypes = $this->typeKeyList($config['entryFromTypes'] ?? [], '„entryFromTypes“');
 
         $entryDateField = $config['entryDateField'] ?? '';
@@ -199,6 +207,45 @@ final class MembershipTypeConfig
         }
 
         return $result;
+    }
+
+    /**
+     * Prüft „overviewDifference“: zwei verschiedene Beschriftungen aus „overviewRoles“ (ohne
+     * Beachtung der Groß-/Kleinschreibung); leer oder fehlend = kein Vergleich.
+     *
+     * @param array<int, array{label:string, roles:string[]}> $rows Zeilen aus „overviewRoles“
+     * @return array{0:string, 1:string}|null Beschriftungen in der Schreibweise von „overviewRoles“
+     * @throws InvalidArgumentException
+     */
+    private static function overviewDifferencePair(mixed $pair, array $rows): ?array
+    {
+        if ($pair === null || $pair === []) {
+            return null;
+        }
+        if (!is_array($pair) || count($pair) !== 2 || array_keys($pair) !== [0, 1]) {
+            throw new InvalidArgumentException('Konfiguration: „overviewDifference“ muss zwei Beschriftungen aus „overviewRoles“ nennen.');
+        }
+        $labels = [];
+        foreach ($pair as $label) {
+            if (!is_string($label) || trim($label) === '') {
+                throw new InvalidArgumentException('Konfiguration: „overviewDifference“ muss zwei Beschriftungen aus „overviewRoles“ nennen.');
+            }
+            $found = null;
+            foreach ($rows as $row) {
+                if (mb_strtolower($row['label']) === mb_strtolower(trim($label))) {
+                    $found = $row['label'];
+                }
+            }
+            if ($found === null) {
+                throw new InvalidArgumentException('Konfiguration: „overviewDifference“ nennt „' . trim($label) . '“, das in „overviewRoles“ nicht vorkommt.');
+            }
+            $labels[] = $found;
+        }
+        if ($labels[0] === $labels[1]) {
+            throw new InvalidArgumentException('Konfiguration: „overviewDifference“ muss zwei verschiedene Zeilen nennen.');
+        }
+
+        return [$labels[0], $labels[1]];
     }
 
     /**
@@ -366,6 +413,16 @@ final class MembershipTypeConfig
     public function getOverviewRows(): array
     {
         return $this->overviewRows;
+    }
+
+    /**
+     * Beschriftungen der beiden Kachelzeilen für den Button „Differenz“; null, wenn
+     * „overviewDifference“ fehlt oder leer ist.
+     * @return array{0:string, 1:string}|null
+     */
+    public function getOverviewDifference(): ?array
+    {
+        return $this->overviewDifference;
     }
 
     /** @return string[] Alle Rollen der Übersichtskacheln, ohne Doppelte */

@@ -84,6 +84,23 @@ final class MembershipTypeConfigTest extends TestCase
             ['label' => 'Aktiv + Jugend', 'roles' => ['Aktiv', 'Jugend']],
         ], $config->getOverviewRows());
         self::assertSame(['Mitglied', 'Aktiv', 'Jugend'], $config->getOverviewRoleNames());
+        self::assertNull($config->getOverviewDifference());
+    }
+
+    public function testOverviewDifferenceNamesTwoOverviewRows(): void
+    {
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), [
+            'overviewRoles'      => ['Mitglied', 'Summe' => ['Aktiv', 'Jugend']],
+            'overviewDifference' => [' summe ', 'MITGLIED'],
+        ]));
+
+        self::assertSame(['Summe', 'Mitglied'], $config->getOverviewDifference());
+
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), [
+            'overviewRoles'      => ['Mitglied', 'Aktiv'],
+            'overviewDifference' => [],
+        ]));
+        self::assertNull($config->getOverviewDifference());
     }
 
     public function testShippedConfigurationFileIsValid(): void
@@ -97,6 +114,7 @@ final class MembershipTypeConfigTest extends TestCase
         self::assertFalse($config->isTransitionAllowed('A', 'J'));
         self::assertContains('Mitglied', $config->getOverviewRoleNames());
         self::assertNotSame([], $config->getOverviewRows());
+        self::assertSame(['Summe', 'Mitglied'], $config->getOverviewDifference());
         self::assertTrue($config->isClubEntry('J', 'A'));
         self::assertFalse($config->isClubEntry('P', 'A'));
         self::assertNotSame('', $config->getEntryDateField());
@@ -244,6 +262,10 @@ final class MembershipTypeConfigTest extends TestCase
             'overviewRoles leere Beschriftung' => [array_merge($base, ['overviewRoles' => [' ' => ['Aktiv']]]), 'leere Beschriftung'],
             'overviewRoles ohne Rolle'        => [array_merge($base, ['overviewRoles' => ['Alle' => []]]), 'nennt keine Rolle'],
             'overviewRoles Beschriftung doppelt' => [array_merge($base, ['overviewRoles' => ['Aktiv', 'aktiv' => ['Jugend']]]), 'mehrfach'],
+            'overviewDifference kein Array'      => [array_merge($base, ['overviewRoles' => ['Aktiv', 'Mitglied'], 'overviewDifference' => 'Aktiv']), '„overviewDifference“'],
+            'overviewDifference nur eine Zeile'  => [array_merge($base, ['overviewRoles' => ['Aktiv', 'Mitglied'], 'overviewDifference' => ['Aktiv']]), 'zwei Beschriftungen'],
+            'overviewDifference unbekannte Zeile' => [array_merge($base, ['overviewRoles' => ['Aktiv', 'Mitglied'], 'overviewDifference' => ['Aktiv', 'Summe']]), 'nennt „Summe“'],
+            'overviewDifference Zeile doppelt'   => [array_merge($base, ['overviewRoles' => ['Aktiv', 'Mitglied'], 'overviewDifference' => ['Aktiv', 'aktiv']]), 'zwei verschiedene Zeilen'],
             'entryFromTypes kein Array'          => [array_merge($base, ['entryFromTypes' => 1]), '„entryFromTypes“'],
             'entryFromTypes unbekanntes Kürzel'  => [array_merge($base, ['entryFromTypes' => ['X']]), 'unbekannte Kürzel „X“'],
             'entryFromTypes Kürzel kein Text'    => [array_merge($base, ['entryFromTypes' => [1]]), 'Kürzel'],

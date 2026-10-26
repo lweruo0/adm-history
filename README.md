@@ -180,6 +180,13 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   Wechsels (Beginn der neuen Rolle; fällt nur eine Rolle weg, deren Ende). Der Wechsel zählt in dem
   Jahr, in das dieses Datum fällt: ein Wechsel zum 1. Januar also im neuen Jahr, nicht zusätzlich
   im alten. Ein Hin- und Rückwechsel innerhalb des Jahres erscheint nicht.
+- **Button „Differenz“**: Daneben, wenn `overviewDifference` zwei Zeilen der Kachel nennt (z. B.
+  „Summe“ und „Mitglied“). Aufgeführt wird, wer am 1. Januar oder am 31. Dezember des Jahres nur in
+  einer der beiden Zeilen ist, also in einer Rolle der einen, aber in keiner Rolle der anderen,
+  z. B. in „Aktiv“ ohne „Mitglied“ oder in „Mitglied“ ohne Mitgliedsart. Die Liste zeigt je Stichtag
+  die Zeile, in der die Person nur ist, mit ihren Rollen dort; ein leeres Feld bedeutet: an diesem
+  Tag in beiden oder in keiner Zeile. Rollen, die in beiden Zeilen stehen (z. B. „Jugend“), ergeben
+  keine Differenz. Ohne Personen ist der Button inaktiv.
 
 ## Mitgliedsarten konfigurieren
 
@@ -195,6 +202,7 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
 | `entryFromTypes` | Kürzel, deren Wechsel zu einer anderen Mitgliedsart als Vereinsbeitritt gilt (z. B. `['J']`: aus der Jugend). Die gemeinsamen Rollen beginnen dann neu am 1. Januar des gewählten Jahres und das Beitrittsdatum wird gesetzt. `''` steht für „kein Mitglied“ (Neueintritt). Ein Austritt ist nie ein Beitritt. Leer oder fehlend: kein Wechsel gilt als Beitritt. |
 | `entryDateField` | Interner Name des Admidio-Profilfelds (Typ Datum) für das Beitrittsdatum (Administration → Profilfelder, „Interner Name“). Beim Vereinsbeitritt wird es auf den 1. Januar des gewählten Jahres gesetzt. Leer oder fehlend: das Beitrittsdatum wird nicht gesetzt. Fehlt das Feld in Admidio oder ist es kein Datumsfeld, scheitert der Wechsel mit einer Fehlermeldung. |
 | `overviewRoles` | Zeilen der Kacheln auf der Übersichtsseite in Anzeigereihenfolge. Ein Eintrag ist ein Rollenname (Beschriftung = Rollenname) oder Beschriftung => Rolle bzw. Liste von Rollen; bei mehreren Rollen zählt jede Person, die in mindestens einer davon ist, einmal. Die Rollen müssen nicht zu einer Mitgliedsart gehören. Fehlt der Schlüssel, zeigt die Kachel einen Hinweis. |
+| `overviewDifference` | Zwei Beschriftungen aus `overviewRoles` (z. B. `['Summe', 'Mitglied']`) für den Button „Differenz“ unter der Tabelle jeder Kachel: Personen, die am 1. Januar oder am 31. Dezember nur in einer der beiden Zeilen sind. Leer oder fehlend: kein Button. |
 | `historyYears` | Standard für „Jahre zurück“ (0 = alle Jahre). |
 
 Rollennamen werden ohne Beachtung der Groß-/Kleinschreibung in der aktuellen Organisation gesucht.
@@ -226,7 +234,8 @@ Ohne Composer: `php tools/lint.php` und `php phpunit.phar` (Phar von https://pha
 ```
 index.php                          Controller: Rechte, Übersicht, Änderungen per fetch (mode=change, addfee, removefee; JSON)
 overview.php                       Kacheln für die Admidio-Übersichtsseite (load_admidio_plugin, Attribut year) und Liste der Ein- und Austritte (mode=changes)
-autoload.php                       Autoloader für die Klassen in classes/ (von index.php und overview.php eingebunden)
+api.php                             schlanke Schnittstelle für externe Aufrufer (eigene Authentifizierung vorausgesetzt): setzt Mitgliedsart und Zusatzbeiträge per JSON (siehe AdmHistory\MembershipApi)
+autoload.php                       Autoloader für die Klassen in classes/ (von index.php, overview.php und api.php eingebunden)
 mitgliedsarten.php                 Konfiguration der Mitgliedsarten (Kürzel, Name, Farbe, Rollen), gemeinsame Rollen, Kacheln
 composer.json, phpunit.xml         Entwicklung (PHPUnit, PHPStan, Skripte lint/test/stan/check)
 phpstan.neon, stubs/admidio.php    PHPStan-Konfiguration und Admidio-Signaturen für die Analyse
@@ -244,6 +253,7 @@ classes/
   ChangeListRenderer.php           Seite mit der Liste der Ein- und Austritte einer Kachelzeile
   MembershipChangePlanner.php      berechnet die Datenbankoperationen eines Wechsels (ohne Admidio)
   MembershipChanger.php            prüft Rechte und führt den Wechsel über die Admidio-Entities aus
+  MembershipApi.php                 schlanke Schnittstelle für externe Aufrufer (api.php): Mitgliedsart und Zusatzbeiträge in einem Aufruf setzen
   HistoryTableRenderer.php         Tabelle mit DataTables, Auswahl und JavaScript für den Wechsel
   Html.php                         Escaping für die HTML-Ausgabe
 tests/                             PHPUnit-Tests (laufen ohne Admidio)
@@ -252,5 +262,5 @@ tests/                             PHPUnit-Tests (laufen ohne Admidio)
 
 ## Voraussetzungen
 
-- Admidio 5, PHP 8.2 oder neuer
+- Admidio 5, PHP 8.5.12 oder neuer
 - Die in `mitgliedsarten.php` genannten Rollen müssen in der aktuellen Organisation existieren und aktiv sein

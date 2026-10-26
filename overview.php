@@ -6,7 +6,9 @@
  * 1. Januar und am 31. Dezember in den konfigurierten Rollen („overviewRoles“ in mitgliedsarten.php)
  * waren. Gab es im Jahr Ein- oder Austritte, öffnet ein Button in der vierten Spalte die Liste dieser
  * Personen in einer neuen Registerkarte (mode=changes); unter der Tabelle stehen die Buttons
- * „Eintritte“, „Austritte“ und „Wechsel“ für alle Rollen der Kachel zusammen. Das HTML entsteht ohne
+ * „Eintritte“, „Austritte“ und „Wechsel“ für alle Rollen der Kachel zusammen sowie, falls
+ * „overviewDifference“ konfiguriert ist, der Button „Differenz“ für den Vergleich zweier Zeilen
+ * (Personen, die am Stichtag nur in einer der beiden Zeilen sind). Das HTML entsteht ohne
  * Smarty-Vorlage direkt in PHP (OverviewTileRenderer). Eingebunden wird die Datei in der Vorlage
  * system/overview.tpl des Themes:
  *
@@ -31,7 +33,8 @@
  *                31. Dezember, Standard), „joined“ (Eintritte), „left“ (Austritte) oder „switched“
  *                (Rollenwechsel); bei diesen drei gelten die Stichtage 31. Dezember des Vorjahres und
  *                1. Januar des Folgejahres, Eintritte zum 1. Januar und Austritte zum 31. Dezember
- *                zählen also mit
+ *                zählen also mit; „difference“ (Differenz der beiden Zeilen aus „overviewDifference“
+ *                am 1. Januar und am 31. Dezember; „row“ wird dabei ignoriert)
  */
 
 use Admidio\Infrastructure\Exception;
@@ -90,9 +93,13 @@ try {
     $roles = $repository->findRolesByNames($config->getOverviewRoleNames());
     $overviewRows = $config->getOverviewRows();
     $rows = [];
+    $roleNamesByLabel = [];
     foreach ($overviewRows as $row) {
         $rows[$row['label']] = array_map(static fn(string $roleName): int => $roles[$roleName]->id, $row['roles']);
+        $roleNamesByLabel[$row['label']] = $row['roles'];
     }
+    // Button „Differenz“: die beiden verglichenen Zeilen (Beschriftungen) oder null
+    $difference = $config->getOverviewDifference();
 
     // ----------------------------------------------------------------------
     // Liste der Ein- und Austritte einer Zeile (eigene Seite, aus der Kachel in neuer Registerkarte)
@@ -111,7 +118,13 @@ try {
         if (!in_array($getListYear, $yearNumbers, true)) {
             throw new RuntimeException('Die Liste gibt es nur für Vorjahr, aktuelles Jahr und Folgejahr.');
         }
-        if ($getRow === -1) {
+        if ($getKind === ChangeListRenderer::KIND_DIFFERENCE) {
+            if ($difference === null) {
+                throw new RuntimeException('Der Button „Differenz“ ist nicht konfiguriert („overviewDifference“ in mitgliedsarten.php).');
+            }
+            $label = $difference[0] . ' / ' . $difference[1];
+            $roleNames = array_values(array_unique(array_merge($roleNamesByLabel[$difference[0]], $roleNamesByLabel[$difference[1]])));
+        } elseif ($getRow === -1) {
             $label = 'alle Rollen der Kachel';
             $roleNames = $config->getOverviewRoleNames();
         } else {
@@ -146,10 +159,35 @@ try {
             'adm_history_changes',
             ChangeListRenderer::KIND_TITLES[$getKind] . ' ' . $getListYear . ': ' . $label
         );
+        $toNames = static fn(array $rolIds): array => array_map(static fn(int $rolId): string => $roleNameById[$rolId], $rolIds);
+
+        // Button „Differenz“: Personen, die am 1. Januar oder am 31. Dezember nur in einer der beiden Zeilen sind
+        if ($getKind === ChangeListRenderer::KIND_DIFFERENCE) {
+            $toSide = static fn(?array $only): ?array => $only === null
+                ? null
+                : ['label' => $difference[$only['group']], 'roles' => $toNames($only['roles'])];
+            $entries = [];
+            foreach ($counter->differencesInYear($periods, $rows[$difference[0]], $rows[$difference[1]], $getListYear) as $change) {
+                $member = $memberByUsrId[$change['usr_id']];
+                $entries[] = [
+                    'usr_uuid'   => $member['usr_uuid'],
+                    'first_name' => $member['first_name'],
+                    'last_name'  => $member['last_name'],
+                    'begin'      => $toSide($change['begin']),
+                    'end'        => $toSide($change['end']),
+                ];
+            }
+            (new ChangeListRenderer())->renderDifferences($listPage, $entries, [
+                $difference[0] => $roleNamesByLabel[$difference[0]],
+                $difference[1] => $roleNamesByLabel[$difference[1]],
+            ], $getListYear);
+            $listPage->show();
+
+            return;
+        }
 
         // Button „Wechsel“: Rollen am 31. Dezember des Vorjahres und am 1. Januar des Folgejahres vergleichen
         if ($getKind === ChangeListRenderer::KIND_SWITCHED) {
-            $toNames = static fn(array $rolIds): array => array_map(static fn(int $rolId): string => $roleNameById[$rolId], $rolIds);
             $entries = [];
             foreach ($counter->roleChangesInYear($periods, $roleIds, $getListYear) as $change) {
                 $member = $memberByUsrId[$change['usr_id']];
@@ -233,6 +271,17 @@ try {
         $left = count(array_filter($changes, static fn(array $change): bool => $change['end'] !== null));
         $switched = count($counter->roleChangesInYear($periods, $allRoleIds, $year));
 
+        // Button „Differenz“: Personen, die am 1. Januar oder am 31. Dezember nur in einer der beiden Zeilen sind
+        $differenceButton = null;
+        if ($difference !== null) {
+            $differenceCount = count($counter->differencesInYear($periods, $rows[$difference[0]], $rows[$difference[1]], $year));
+            $differenceButton = [
+                'count'  => $differenceCount,
+                'url'    => $differenceCount > 0 ? SecurityUtils::encodeUrl($overviewUrl, ['mode' => 'changes', 'year' => $year, 'kind' => ChangeListRenderer::KIND_DIFFERENCE]) : '',
+                'labels' => $difference,
+            ];
+        }
+
         $tiles[] = [
             'key'    => $key,
             'year'   => $year,
@@ -250,6 +299,7 @@ try {
                 'count' => $switched,
                 'url'   => $switched > 0 ? SecurityUtils::encodeUrl($overviewUrl, ['mode' => 'changes', 'year' => $year, 'kind' => ChangeListRenderer::KIND_SWITCHED]) : '',
             ],
+            'difference' => $differenceButton,
         ];
     }
 

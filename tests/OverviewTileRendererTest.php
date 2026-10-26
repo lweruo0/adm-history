@@ -39,6 +39,33 @@ final class OverviewTileRendererTest extends TestCase
         self::assertStringContainsString('bi-arrow-left-right"></i> Wechsel (1)</a>', $html);
         self::assertStringContainsString('<span class="btn btn-sm btn-secondary disabled" aria-disabled="true" title="Keine Austritte 2026">', $html);
         self::assertStringContainsString('Austritte (0)</span>', $html);
+        // ohne „overviewDifference“ kein Button „Differenz“
+        self::assertStringNotContainsString('Differenz', $html);
+    }
+
+    public function testRendersDifferenceButtonWhenConfigured(): void
+    {
+        $tile = [
+            'key'      => 'current',
+            'year'     => 2026,
+            'label'    => 'aktuelles Jahr',
+            'rows'     => [['label' => 'Summe', 'begin' => 10, 'end' => 12, 'changes' => 0, 'url' => '']],
+            'joined'   => ['count' => 0, 'url' => ''],
+            'left'     => ['count' => 0, 'url' => ''],
+            'switched' => ['count' => 0, 'url' => ''],
+        ];
+        $renderer = new OverviewTileRenderer();
+
+        $tile['difference'] = ['count' => 2, 'url' => 'https://example.org/overview.php?mode=changes&year=2026&kind=difference', 'labels' => ['Summe', 'Mitglied']];
+        $html = $renderer->render([$tile], 'adm-history', 'https://example.org/index.php');
+        self::assertStringContainsString('kind=difference" target="_blank"', $html);
+        self::assertStringContainsString('bi-exclamation-triangle"></i> Differenz (2)</a>', $html);
+        self::assertStringContainsString('title="Differenz zwischen „Summe“ und „Mitglied“ 2026:', $html);
+
+        $tile['difference'] = ['count' => 0, 'url' => '', 'labels' => ['Summe', 'Mitglied']];
+        $html = $renderer->render([$tile], 'adm-history', 'https://example.org/index.php');
+        self::assertStringContainsString('title="Keine Differenz zwischen „Summe“ und „Mitglied“ 2026">', $html);
+        self::assertStringContainsString('Differenz (0)</span>', $html);
     }
 
     public function testRendersNoticeWithoutRows(): void

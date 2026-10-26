@@ -161,6 +161,43 @@ final class MemberCounterTest extends TestCase
         self::assertSame([], $this->counter->roleIdsInYearByUser($this->periods, [99], 2026));
     }
 
+    public function testDifferencesInYearListPersonsInOnlyOneGroupAtEitherDate(): void
+    {
+        // Gruppe 0: Mitgliedsarten (10 Aktiv, 11 Passiv, 13 Jugend), Gruppe 1: Mitglied (12) und Jugend (13)
+        $periods = [
+            ['usr_id' => 1, 'rol_id' => 10, 'begin' => '2020-01-01', 'end' => '9999-12-31'], // Aktiv und Mitglied: stimmig
+            ['usr_id' => 1, 'rol_id' => 12, 'begin' => '2020-01-01', 'end' => '9999-12-31'],
+            ['usr_id' => 2, 'rol_id' => 10, 'begin' => '2025-01-01', 'end' => '2025-12-31'], // Aktiv ohne Mitglied
+            ['usr_id' => 3, 'rol_id' => 12, 'begin' => '2025-07-01', 'end' => '9999-12-31'], // Mitglied ohne Mitgliedsart ab Juli
+            ['usr_id' => 4, 'rol_id' => 11, 'begin' => '2025-01-01', 'end' => '2025-06-30'], // Passiv endet im Jahr, Mitglied läuft weiter
+            ['usr_id' => 4, 'rol_id' => 10, 'begin' => '2025-01-01', 'end' => '2025-06-30'],
+            ['usr_id' => 4, 'rol_id' => 12, 'begin' => '2025-01-01', 'end' => '9999-12-31'],
+            ['usr_id' => 5, 'rol_id' => 13, 'begin' => '2025-01-01', 'end' => '9999-12-31'], // Jugend in beiden Gruppen: stimmig
+            ['usr_id' => 6, 'rol_id' => 10, 'begin' => '2026-01-01', 'end' => '9999-12-31'], // erst im Folgejahr
+        ];
+
+        self::assertSame([
+            ['usr_id' => 2, 'begin' => ['group' => 0, 'roles' => [10]], 'end' => ['group' => 0, 'roles' => [10]]],
+            ['usr_id' => 3, 'begin' => null, 'end' => ['group' => 1, 'roles' => [12]]],
+            ['usr_id' => 4, 'begin' => null, 'end' => ['group' => 1, 'roles' => [12]]],
+        ], $this->counter->differencesInYear($periods, [10, 11, 13], [12, 13], 2025));
+
+        // 2026 fehlt Person 6 das Mitglied, Person 3 und 4 die Mitgliedsart
+        self::assertSame([
+            ['usr_id' => 6, 'begin' => ['group' => 0, 'roles' => [10]], 'end' => ['group' => 0, 'roles' => [10]]],
+            ['usr_id' => 3, 'begin' => ['group' => 1, 'roles' => [12]], 'end' => ['group' => 1, 'roles' => [12]]],
+            ['usr_id' => 4, 'begin' => ['group' => 1, 'roles' => [12]], 'end' => ['group' => 1, 'roles' => [12]]],
+        ], $this->counter->differencesInYear($periods, [11, 10, 13], [12, 13], 2026));
+        // zweite Gruppe ohne Personen: alle aus der ersten Gruppe, Rollen in der Reihenfolge der Gruppe
+        self::assertSame([
+            ['usr_id' => 1, 'begin' => ['group' => 0, 'roles' => [10]], 'end' => ['group' => 0, 'roles' => [10]]],
+            ['usr_id' => 2, 'begin' => ['group' => 0, 'roles' => [10]], 'end' => ['group' => 0, 'roles' => [10]]],
+            ['usr_id' => 4, 'begin' => ['group' => 0, 'roles' => [11, 10]], 'end' => null],
+        ], $this->counter->differencesInYear($periods, [11, 10], [99], 2025));
+        self::assertSame([], $this->counter->differencesInYear($periods, [10, 11, 13], [12, 13], 2023));
+        self::assertSame([], $this->counter->differencesInYear([], [10], [12], 2025));
+    }
+
     public function testYearTableKeepsRowOrderAndLabels(): void
     {
         $rows = ['Aktiv' => [10], 'Passiv' => [11], 'Alle' => [10, 11]];

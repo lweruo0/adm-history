@@ -221,6 +221,71 @@ final class MemberCounter
     }
 
     /**
+     * Differenz zwischen zwei Zeilen der Kachel: Personen, die am 1. Januar oder am 31. Dezember des
+     * Jahres in genau einer der beiden Rollengruppen sind, z. B. in einer Rolle einer Mitgliedsart,
+     * aber nicht in „Mitglied“, oder umgekehrt. Je Stichtag steht, in welcher Gruppe die Person nur
+     * ist (group: 0 = erste, 1 = zweite) und in welchen Rollen dieser Gruppe (in der Reihenfolge der
+     * Rollenliste); null = an diesem Tag in beiden oder in keiner Gruppe, also keine Differenz.
+     * Rollen, die in beiden Gruppen stehen, ergeben nie eine Differenz.
+     *
+     * @param array<int, array{usr_id:int, rol_id:int, begin:string, end:string}> $periods
+     * @param int[]                                                               $firstRoleIds
+     * @param int[]                                                               $secondRoleIds
+     * @return array<int, array{usr_id:int, begin:?array{group:int, roles:int[]}, end:?array{group:int, roles:int[]}}>
+     */
+    public function differencesInYear(array $periods, array $firstRoleIds, array $secondRoleIds, int $year): array
+    {
+        $byUser = [];
+        foreach (['begin' => $year . '-01-01', 'end' => $year . '-12-31'] as $key => $date) {
+            $rolesByGroup = [
+                $this->roleIdsAtDateByUser($periods, $firstRoleIds, $date),
+                $this->roleIdsAtDateByUser($periods, $secondRoleIds, $date),
+            ];
+            foreach ([0, 1] as $group) {
+                foreach ($rolesByGroup[$group] as $usrId => $roleIds) {
+                    if (isset($rolesByGroup[1 - $group][$usrId])) {
+                        continue; // in beiden Gruppen: keine Differenz
+                    }
+                    $byUser[$usrId][$key] = ['group' => $group, 'roles' => $roleIds];
+                }
+            }
+        }
+
+        $differences = [];
+        foreach ($byUser as $usrId => $dates) {
+            $differences[] = ['usr_id' => $usrId, 'begin' => $dates['begin'] ?? null, 'end' => $dates['end'] ?? null];
+        }
+
+        return $differences;
+    }
+
+    /**
+     * Rollen je Person, in denen sie am Stichtag ist, in der Reihenfolge von $roleIds.
+     *
+     * @param array<int, array{usr_id:int, rol_id:int, begin:string, end:string}> $periods
+     * @param int[]                                                               $roleIds
+     * @return array<int, int[]> usr_id => Rollen-IDs
+     */
+    private function roleIdsAtDateByUser(array $periods, array $roleIds, string $date): array
+    {
+        $position = array_flip(array_values($roleIds));
+        $found = [];
+        foreach ($periods as $period) {
+            if (isset($position[$period['rol_id']]) && $period['begin'] <= $date && $period['end'] >= $date) {
+                $found[$period['usr_id']][$period['rol_id']] = $position[$period['rol_id']];
+            }
+        }
+
+        $result = [];
+        foreach ($found as $usrId => $byRole) {
+            asort($byRole);
+            $result[$usrId] = array_keys($byRole);
+        }
+
+        return $result;
+    }
+
+    /**
      * Tabelle eines Jahres: je Zeile die Anzahl der Personen am 1. Januar und am 31. Dezember sowie
      * die Anzahl der Personen mit unterjährigem Ein- oder Austritt (changesInYear mit SCOPE_WITHIN_YEAR).
      *
