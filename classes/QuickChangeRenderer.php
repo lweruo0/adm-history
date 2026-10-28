@@ -12,8 +12,8 @@ use Admidio\UI\Presenter\PagePresenter;
  *
  * Die Buttons baut das JavaScript aus dem Zustand je Person und Jahr (YearHistory::yearStateWithFees())
  * auf, damit Erstanzeige und Aktualisierung nach dem Speichern denselben Code nutzen. Gespeichert
- * wird per fetch() an quick_change.php?mode=save im JSON-Format von api.php (user_uuid, year,
- * art, fee); die Antwort enthält den neuen Stand beider Jahre.
+ * wird per fetch() an quick_change.php?mode=save als JSON (user_uuid, year, art, fee wie bei
+ * MembershipApi::change()); die Antwort enthält den neuen Stand beider Jahre.
  */
 final class QuickChangeRenderer
 {
@@ -82,8 +82,20 @@ final class QuickChangeRenderer
             .adm-quick-types, .adm-quick-fees { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
             .adm-quick-fees { margin-top: .25rem; }
             .adm-quick-fees:empty { display: none; }
-            .adm-quick-type.adm-quick-active { font-weight: 700; color: #212529; border-color: rgba(0,0,0,.45); }
-            .adm-quick-fee { font-size: .8rem; padding: 0 .4rem; }
+            /* eigene Farben statt btn-outline-*, die das Admidio-Theme überschreibt */
+            #' . self::TABLE_ID . ' .adm-quick-btn, #' . self::TABLE_ID . ' .adm-quick-btn:hover, #' . self::TABLE_ID . ' .adm-quick-btn:focus, #' . self::TABLE_ID . ' .adm-quick-btn:disabled {
+                color: #212529; background-color: #fff; border: 1px solid #adb5bd; opacity: 1; }
+            #' . self::TABLE_ID . ' .adm-quick-btn:not(.adm-quick-active):hover:not(:disabled) { background-color: #e9ecef; }
+            #' . self::TABLE_ID . ' .adm-quick-btn:disabled { color: #adb5bd; border-color: #dee2e6; background-color: #fff; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-active, #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-active:hover { font-weight: 700; border-color: rgba(0,0,0,.55); }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel { color: #b02a37; border-color: #dc3545; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel:not(.adm-quick-active):hover:not(:disabled) { background-color: #f8d7da; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel.adm-quick-active, #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel.adm-quick-active:hover { color: #fff; background-color: #dc3545; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee { font-size: .8rem; padding: 0 .4rem; color: #146c43; border-color: #198754; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee:not(.adm-quick-fee-on):hover:not(:disabled) { background-color: #d1e7dd; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee-on, #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee-on:hover { color: #fff; background-color: #198754; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee:disabled { color: #6c757d; border-color: #ced4da; }
+            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee-on:disabled { color: #fff; background-color: #75b798; }
             .adm-quick-unknown { display: inline-block; min-width: 1.7em; border-radius: .25rem; text-align: center; font-weight: 600;
                 background-color: #e9ecef; color: #6c757d; border: 1px solid rgba(0,0,0,.15); }
             .adm-quick-saved { animation: adm-quick-flash 1.2s ease-out; }
@@ -151,7 +163,7 @@ final class QuickChangeRenderer
                 function button(className, text, title) {
                     var element = document.createElement("button");
                     element.type = "button";
-                    element.className = "btn btn-sm " + className;
+                    element.className = "btn btn-sm adm-quick-btn " + className;
                     element.textContent = text;
                     element.title = title;
                     return element;
@@ -170,11 +182,11 @@ final class QuickChangeRenderer
                         var active = key === state.value;
                         var element;
                         if (key === "") {
-                            element = button(active ? "btn-danger" : "btn-outline-danger", "Kündigung",
+                            element = button("adm-quick-cancel" + (active ? " adm-quick-active" : ""), "Kündigung",
                                 active ? "Kein Mitglied am 31.12." + year : "Kündigung: kein Mitglied ab 01.01." + year);
                         } else {
                             var type = settings.types[key];
-                            element = button(active ? "adm-quick-active" : "btn-outline-secondary", type.name,
+                            element = button(active ? "adm-quick-active" : "", type.name,
                                 type.label + (active ? " am 31.12." + year : " ab 01.01." + year));
                             if (active) {
                                 element.style.backgroundColor = type.color;
@@ -213,7 +225,7 @@ final class QuickChangeRenderer
                     });
                     names.forEach(function (name) {
                         var active = state.fees.indexOf(name) !== -1;
-                        var element = button("adm-quick-fee " + (active ? "btn-success" : "btn-outline-success"),
+                        var element = button("adm-quick-fee" + (active ? " adm-quick-fee-on" : ""),
                             (active ? "✓ " : "+ ") + name,
                             !type ? "Zusatzbeitrag „" + name + "“ (ohne Mitgliedsart am 31.12." + year + " nicht änderbar)"
                                 : "Zusatzbeitrag „" + name + "“ " + (active ? "entfernen" : "ab 01.01." + year + " hinzufügen"));
@@ -230,7 +242,7 @@ final class QuickChangeRenderer
                     return table.querySelectorAll(".adm-quick-year[data-user=\"" + userUuid + "\"]");
                 }
 
-                // Speichern im Format von api.php; die Antwort enthält den neuen Stand beider Jahre
+                // Speichern über MembershipApi; die Antwort enthält den neuen Stand beider Jahre
                 function save(cell, art, fees) {
                     var userUuid = cell.dataset.user;
                     var cells = rowCells(userUuid);

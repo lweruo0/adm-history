@@ -5,8 +5,8 @@
  * Zeigt alle Personen, die im aktuellen Jahr oder im Folgejahr Mitglied sind, mit je einer Spalte
  * für beide Jahre. Jede Spalte enthält einen Button je Mitgliedsart, einen Button „Kündigung“ und
  * die optionalen Beitragsrollen (Zusatzbeiträge) der gewählten Mitgliedsart zum Ein- und
- * Ausschalten. Gespeichert wird über AdmHistory\MembershipApi (dieselbe Logik und dasselbe
- * JSON-Format wie api.php), hier aber mit Rechteprüfung und CSRF-Token.
+ * Ausschalten. Gespeichert wird über AdmHistory\MembershipApi::change(), hier mit Rechteprüfung
+ * und CSRF-Token, weil die Anfrage aus der Seite kommt.
  *
  * Parameter:
  *   mode       (GET)  „save“ zum Speichern (POST per fetch, JSON im Request-Body, Antwort als
@@ -68,7 +68,7 @@ try {
     $editableYears = [$currentYear, $currentYear + 1];
 
     // ----------------------------------------------------------------------
-    // Speichern über MembershipApi (POST per fetch, JSON wie api.php, Antwort als JSON)
+    // Speichern über MembershipApi (POST per fetch, JSON im Request-Body, Antwort als JSON)
     // ----------------------------------------------------------------------
     if ($getMode === 'save') {
         try {

@@ -162,10 +162,16 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   soweit sie auch zur neuen Mitgliedsart gehören. Darunter stehen die optionalen Beitragsrollen der
   Mitgliedsart am 31.12. als Umschalter (vorhandene mit Häkchen); ein Klick fügt den Zusatzbeitrag ab
   dem 1. Januar hinzu oder entfernt ihn. Ohne Mitgliedsart am 31.12. sind Zusatzbeiträge nur Anzeige.
-  Gespeichert wird über die Programmierschnittstelle von `api.php` (`MembershipApi`), dabei aber mit
-  Rechteprüfung und CSRF-Token; danach werden beide Jahresspalten der Zeile aktualisiert. Achtung:
+  Gespeichert wird über `MembershipApi` mit Rechteprüfung und CSRF-Token;
+  danach werden beide Jahresspalten der Zeile aktualisiert. Achtung:
   Ändern eines Zusatzbeitrags setzt die Mitgliedsart am 31.12. erneut ab dem 1. Januar; gab es im Jahr
   einen Wechsel (Warnsymbol), wird er damit auf den 1. Januar vorgezogen. Die Rückfrage weist darauf hin.
+- **Programmierschnittstelle für andere Plugins**: Plugins auf demselben Server (z. B. eine REST-API)
+  setzen Mitgliedsart und Zusatzbeiträge einer Person für das aktuelle Jahr oder das Folgejahr in
+  einem Aufruf über die Klasse `MembershipApi` (Einbindung, Eingaben und Rückgabe im Doc-Block der
+  Klasse). Eine eigene HTTP-Schnittstelle bietet dieses Plugin nicht. Wer die Schnittstelle nutzen
+  darf, prüft das aufrufende Plugin; es setzt vorher den API-Benutzer als `$gCurrentUser`, dessen
+  Rechte an den betroffenen Rollen prüft dieses Plugin weiterhin.
 - **Übersichtskacheln**: Je Kachel (Folgejahr, aktuelles Jahr, Vorjahr) eine Tabelle mit einer Zeile
   je Eintrag in `overviewRoles` und den Spalten „01.01.“ und „31.12.“: Anzahl der Personen, die am
   Stichtag in der Rolle (bei mehreren Rollen: in mindestens einer davon) sind, jede Person einmal.
@@ -256,8 +262,7 @@ Ohne Composer: `php tools/lint.php` und `php phpunit.phar` (Phar von https://pha
 index.php                          Controller: Rechte, Übersicht, Änderungen per fetch (mode=change, addfee, removefee; JSON)
 quick_change.php                   Schnellwechsel: Buttons je Mitgliedsart, Kündigung und Zusatzbeiträge für aktuelles Jahr und Folgejahr; Speichern über MembershipApi (mode=save; JSON)
 overview.php                       Kacheln für die Admidio-Übersichtsseite (load_admidio_plugin, Attribut year) und Liste der Ein- und Austritte (mode=changes)
-api.php                             schlanke Schnittstelle für externe Aufrufer (eigene Authentifizierung vorausgesetzt): setzt Mitgliedsart und Zusatzbeiträge per JSON (siehe AdmHistory\MembershipApi)
-autoload.php                       Autoloader für die Klassen in classes/ (von index.php, overview.php, quick_change.php und api.php eingebunden)
+autoload.php                       Autoloader für die Klassen in classes/ (von index.php, overview.php und quick_change.php eingebunden; auch für andere Plugins, die MembershipApi nutzen)
 mitgliedsarten.php                 Konfiguration der Mitgliedsarten (Kürzel, Name, Farbe, Rollen), gemeinsame Rollen, Kacheln
 composer.json, phpunit.xml         Entwicklung (PHPUnit, PHPStan, Skripte lint/test/stan/check)
 phpstan.neon, stubs/admidio.php    PHPStan-Konfiguration und Admidio-Signaturen für die Analyse
@@ -275,7 +280,7 @@ classes/
   ChangeListRenderer.php           Seite mit der Liste der Ein- und Austritte einer Kachelzeile
   MembershipChangePlanner.php      berechnet die Datenbankoperationen eines Wechsels (ohne Admidio)
   MembershipChanger.php            prüft Rechte und führt den Wechsel über die Admidio-Entities aus
-  MembershipApi.php                 schlanke Schnittstelle (api.php, Schnellwechsel): Mitgliedsart und Zusatzbeiträge in einem Aufruf setzen
+  MembershipApi.php                Schnittstelle für Schnellwechsel und andere Plugins: Mitgliedsart und Zusatzbeiträge in einem Aufruf setzen
   HistoryTableRenderer.php         Tabelle mit DataTables, Auswahl und JavaScript für den Wechsel
   QuickChangeRenderer.php          Tabelle des Schnellwechsels mit Buttons und JavaScript
   Html.php                         Escaping für die HTML-Ausgabe

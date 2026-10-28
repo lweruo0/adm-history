@@ -5,7 +5,6 @@ parameters:
         - tests
         - index.php
         - overview.php
-        - api.php
         - quick_change.php
         - autoload.php
         - mitgliedsarten.php

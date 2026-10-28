@@ -4,11 +4,17 @@ namespace AdmHistory;
 use RuntimeException;
 
 /**
- * Programmierschnittstelle für externe Aufrufer (z. B. eine eigene REST-API): setzt Mitgliedsart
- * und optionale Beitragsrollen (Zusatzbeiträge) einer Person ab dem 1. Januar eines Jahres in
- * einem Aufruf. Authentifizierung und Zugriffsschutz sind Sache des Aufrufers; diese Klasse prüft
- * nur die fachlichen Regeln und nutzt MembershipChanger für die eigentlichen Änderungen, damit
- * Rechteprüfung, Änderungsprotokoll und Benachrichtigungen von Admidio erhalten bleiben.
+ * Programmierschnittstelle für den Schnellwechsel (quick_change.php) und andere Plugins auf
+ * demselben Server (z. B. eine eigene REST-API): setzt Mitgliedsart und optionale Beitragsrollen
+ * (Zusatzbeiträge) einer Person ab dem 1. Januar eines Jahres in einem Aufruf.
+ *
+ * Aufruf aus einem anderen Plugin: nach system/common.php die Datei autoload.php dieses Plugins
+ * einbinden und MembershipApi::fromContext(AdmidioContext::fromGlobals())->change(...) aufrufen.
+ * Authentifizierung und Zugriffsschutz (wer darf die Schnittstelle nutzen?) sind Sache des
+ * Aufrufers; er setzt vorher den angemeldeten Benutzer als $gCurrentUser. Diese Klasse prüft die
+ * fachlichen Regeln und nutzt MembershipChanger für die eigentlichen Änderungen, der die Rechte
+ * dieses Benutzers an den betroffenen Rollen prüft und Änderungsprotokoll und Benachrichtigungen
+ * von Admidio erhält.
  */
 final class MembershipApi
 {
