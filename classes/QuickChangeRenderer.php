@@ -85,6 +85,9 @@ final class QuickChangeRenderer
             /* ausgewählt in der Primärfarbe des Themes statt in --bs-secondary (fast schwarz) */
             #' . self::TABLE_ID . ' .btn-check:checked + .btn {
                 color: var(--bs-body-bg, #fff) !important; background-color: var(--bs-primary); border-color: var(--bs-primary) !important; }
+            /* ausgewählte Kündigung (kein Mitglied am 31.12.) hervorgehoben */
+            #' . self::TABLE_ID . ' .btn-check:checked + .btn.adm-quick-cancel {
+                background-color: var(--bs-danger, #dc3545); border-color: var(--bs-danger, #dc3545) !important; font-weight: 700; }
             /* das Theme färbt btn-outline-primary auch gesperrt mit !important in der Primärfarbe; gesperrte Ziele grau */
             #' . self::TABLE_ID . ' .btn-check:disabled:not(:checked) + .btn {
                 color: var(--bs-secondary-color, #6c757d) !important; border-color: var(--bs-border-color, #dee2e6) !important;
@@ -195,6 +198,9 @@ final class QuickChangeRenderer
                             : settings.types[key].label + (active ? " am 31.12." + year : " ab 01.01." + year);
                         var input = toggle(types, "radio", groupName, text, title, active, !active && allowed.indexOf(key) === -1);
                         input.classList.add("adm-quick-type");
+                        if (key === "") {
+                            input.nextSibling.classList.add("adm-quick-cancel");
+                        }
                         input.value = key;
                     });
                     if (state.others.length > 0) {
