@@ -155,12 +155,12 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
 - **Schnellwechsel** (`quick_change.php`, nur mit dem Recht zum Ändern): Tabelle aller Personen, die
   im aktuellen Jahr oder im Folgejahr mindestens einen Tag Mitglied sind (Rolle einer Mitgliedsart
   oder gemeinsame Rolle), mit je einer Spalte für beide Jahre. Jede Spalte zeigt einen Button je
-  Mitgliedsart und einen Button „Kündigung“; die Mitgliedsart am 31.12. ist farbig hervorgehoben
-  („Kündigung“ rot, wenn die Person am 31.12. kein Mitglied ist). Nur die in `transitions` erlaubten
-  Ziele sind aktiv. Ein Klick wechselt nach der Rückfrage ab dem 1. Januar des Jahres, mit denselben
+  Mitgliedsart und einen Button „Kündigung“ im Stil des Admidio-Themes; die Mitgliedsart am 31.12. ist
+  ausgewählt (dunkel hinterlegt, „Kündigung“, wenn die Person am 31.12. kein Mitglied ist). Nur die in
+  `transitions` erlaubten Ziele sind aktiv. Ein Klick wechselt nach der Rückfrage ab dem 1. Januar des Jahres, mit denselben
   Regeln wie die Auswahl der Mitglieder-Historie (siehe „Wechsel“); vorhandene Zusatzbeiträge bleiben,
   soweit sie auch zur neuen Mitgliedsart gehören. Darunter stehen die optionalen Beitragsrollen der
-  Mitgliedsart am 31.12. als Umschalter (vorhandene mit Häkchen); ein Klick fügt den Zusatzbeitrag ab
+  Mitgliedsart am 31.12. als Umschalter (vorhandene dunkel hinterlegt); ein Klick fügt den Zusatzbeitrag ab
   dem 1. Januar hinzu oder entfernt ihn. Ohne Mitgliedsart am 31.12. sind Zusatzbeiträge nur Anzeige.
   Gespeichert wird über `MembershipApi` mit Rechteprüfung und CSRF-Token;
   danach werden beide Jahresspalten der Zeile aktualisiert. Achtung:

@@ -114,7 +114,6 @@ final class QuickChangeRenderer
         foreach ($this->config->getTypes() as $type) {
             $types[$type->key] = [
                 'name'         => $type->name,
-                'color'        => $type->color,
                 'label'        => $type->label(),
                 'optionalFees' => $type->optionalFeeRoles,
             ];
@@ -183,13 +182,11 @@ final class QuickChangeRenderer
                     types.setAttribute("aria-label", "Mitgliedsart " + year);
                     Object.keys(settings.types).concat([""]).forEach(function (key) {
                         var active = key === state.value;
-                        var input = key === ""
-                            ? toggle(types, "radio", groupName, "Kündigung",
-                                active ? "Kein Mitglied am 31.12." + year : "Kündigung: kein Mitglied ab 01.01." + year,
-                                active, !active && allowed.indexOf(key) === -1)
-                            : toggle(types, "radio", groupName, settings.types[key].name,
-                                settings.types[key].label + (active ? " am 31.12." + year : " ab 01.01." + year),
-                                active, !active && allowed.indexOf(key) === -1);
+                        var text = key === "" ? "Kündigung" : settings.types[key].name;
+                        var title = key === ""
+                            ? (active ? "Kein Mitglied am 31.12." + year : "Kündigung: kein Mitglied ab 01.01." + year)
+                            : settings.types[key].label + (active ? " am 31.12." + year : " ab 01.01." + year);
+                        var input = toggle(types, "radio", groupName, text, title, active, !active && allowed.indexOf(key) === -1);
                         input.classList.add("adm-quick-type");
                         input.value = key;
                     });
