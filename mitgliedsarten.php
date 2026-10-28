@@ -92,9 +92,13 @@ return [
     // Person nur einmal gezählt). Leer oder weggelassen: die Kachel zeigt einen Hinweis.
     'overviewRoles' => [
         'Aktiv',
+        'Aktivbeitrag',
         'Passiv',
+        'Passivbeitrag',
         'Jugend',
+        'Jugendbeitrag',
         'Ehren',
+        'Ehrenbeitrag',
         'Förder',
         'Summe' => ['Aktiv', 'Passiv', 'Jugend', 'Ehren', 'Förder'],
         'Mitglied' => ['Mitglied', 'Jugend'],
