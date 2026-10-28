@@ -82,20 +82,6 @@ final class QuickChangeRenderer
             .adm-quick-types, .adm-quick-fees { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
             .adm-quick-fees { margin-top: .25rem; }
             .adm-quick-fees:empty { display: none; }
-            /* eigene Farben statt btn-outline-*, die das Admidio-Theme überschreibt */
-            #' . self::TABLE_ID . ' .adm-quick-btn, #' . self::TABLE_ID . ' .adm-quick-btn:hover, #' . self::TABLE_ID . ' .adm-quick-btn:focus, #' . self::TABLE_ID . ' .adm-quick-btn:disabled {
-                color: #212529; background-color: #fff; border: 1px solid #adb5bd; opacity: 1; }
-            #' . self::TABLE_ID . ' .adm-quick-btn:not(.adm-quick-active):hover:not(:disabled) { background-color: #e9ecef; }
-            #' . self::TABLE_ID . ' .adm-quick-btn:disabled { color: #adb5bd; border-color: #dee2e6; background-color: #fff; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-active, #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-active:hover { font-weight: 700; border-color: rgba(0,0,0,.55); }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel { color: #b02a37; border-color: #dc3545; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel:not(.adm-quick-active):hover:not(:disabled) { background-color: #f8d7da; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel.adm-quick-active, #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-cancel.adm-quick-active:hover { color: #fff; background-color: #dc3545; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee { font-size: .8rem; padding: 0 .4rem; color: #146c43; border-color: #198754; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee:not(.adm-quick-fee-on):hover:not(:disabled) { background-color: #d1e7dd; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee-on, #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee-on:hover { color: #fff; background-color: #198754; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee:disabled { color: #6c757d; border-color: #ced4da; }
-            #' . self::TABLE_ID . ' .adm-quick-btn.adm-quick-fee-on:disabled { color: #fff; background-color: #75b798; }
             .adm-quick-unknown { display: inline-block; min-width: 1.7em; border-radius: .25rem; text-align: center; font-weight: 600;
                 background-color: #e9ecef; color: #6c757d; border: 1px solid rgba(0,0,0,.15); }
             .adm-quick-saved { animation: adm-quick-flash 1.2s ease-out; }
@@ -160,13 +146,27 @@ final class QuickChangeRenderer
                     return settings.states[cell.dataset.user].years[cell.dataset.year];
                 }
 
-                function button(className, text, title) {
-                    var element = document.createElement("button");
-                    element.type = "button";
-                    element.className = "btn btn-sm adm-quick-btn " + className;
-                    element.textContent = text;
-                    element.title = title;
-                    return element;
+                var toggleCount = 0;
+
+                // Umschalter im Stil des Admidio-Themes: input.btn-check mit label.btn (ausgewählt = dunkel)
+                function toggle(container, inputType, groupName, text, title, checked, disabled) {
+                    var id = "adm_quick_toggle_" + (++toggleCount);
+                    var input = document.createElement("input");
+                    input.type = inputType;
+                    input.className = "btn-check";
+                    input.id = id;
+                    input.name = groupName;
+                    input.autocomplete = "off";
+                    input.checked = checked;
+                    input.disabled = disabled;
+                    var label = document.createElement("label");
+                    label.className = "btn btn-sm btn-outline-primary";
+                    label.htmlFor = id;
+                    label.textContent = text;
+                    label.title = title;
+                    container.appendChild(input);
+                    container.appendChild(label);
+                    return input;
                 }
 
                 // Zelle eines Jahres aus dem Zustand aufbauen: Mitgliedsarten, Kündigung, Hinweise, Zusatzbeiträge
@@ -174,29 +174,24 @@ final class QuickChangeRenderer
                     var state = stateOf(cell);
                     var year = cell.dataset.year;
                     var allowed = settings.transitions[state.value] || [];
+                    var groupName = "adm_quick_" + cell.dataset.user + "_" + year;
                     cell.innerHTML = "";
 
                     var types = document.createElement("div");
                     types.className = "adm-quick-types";
+                    types.setAttribute("role", "radiogroup");
+                    types.setAttribute("aria-label", "Mitgliedsart " + year);
                     Object.keys(settings.types).concat([""]).forEach(function (key) {
                         var active = key === state.value;
-                        var element;
-                        if (key === "") {
-                            element = button("adm-quick-cancel" + (active ? " adm-quick-active" : ""), "Kündigung",
-                                active ? "Kein Mitglied am 31.12." + year : "Kündigung: kein Mitglied ab 01.01." + year);
-                        } else {
-                            var type = settings.types[key];
-                            element = button(active ? "adm-quick-active" : "", type.name,
-                                type.label + (active ? " am 31.12." + year : " ab 01.01." + year));
-                            if (active) {
-                                element.style.backgroundColor = type.color;
-                            }
-                        }
-                        element.classList.add("adm-quick-type");
-                        element.dataset.type = key;
-                        element.setAttribute("aria-pressed", active ? "true" : "false");
-                        element.disabled = !active && allowed.indexOf(key) === -1;
-                        types.appendChild(element);
+                        var input = key === ""
+                            ? toggle(types, "radio", groupName, "Kündigung",
+                                active ? "Kein Mitglied am 31.12." + year : "Kündigung: kein Mitglied ab 01.01." + year,
+                                active, !active && allowed.indexOf(key) === -1)
+                            : toggle(types, "radio", groupName, settings.types[key].name,
+                                settings.types[key].label + (active ? " am 31.12." + year : " ab 01.01." + year),
+                                active, !active && allowed.indexOf(key) === -1);
+                        input.classList.add("adm-quick-type");
+                        input.value = key;
                     });
                     if (state.others.length > 0) {
                         var icon = document.createElement("i");
@@ -225,15 +220,13 @@ final class QuickChangeRenderer
                     });
                     names.forEach(function (name) {
                         var active = state.fees.indexOf(name) !== -1;
-                        var element = button("adm-quick-fee" + (active ? " adm-quick-fee-on" : ""),
-                            (active ? "✓ " : "+ ") + name,
-                            !type ? "Zusatzbeitrag „" + name + "“ (ohne Mitgliedsart am 31.12." + year + " nicht änderbar)"
-                                : "Zusatzbeitrag „" + name + "“ " + (active ? "entfernen" : "ab 01.01." + year + " hinzufügen"));
-                        element.dataset.fee = name;
-                        element.setAttribute("aria-pressed", active ? "true" : "false");
                         // ohne Mitgliedsart nur Anzeige: die API würde art = "" als Kündigung ausführen
-                        element.disabled = !type;
-                        fees.appendChild(element);
+                        var input = toggle(fees, "checkbox", "", name,
+                            !type ? "Zusatzbeitrag „" + name + "“ (ohne Mitgliedsart am 31.12." + year + " nicht änderbar)"
+                                : "Zusatzbeitrag „" + name + "“ " + (active ? "entfernen" : "ab 01.01." + year + " hinzufügen"),
+                            active, !type);
+                        input.classList.add("adm-quick-fee");
+                        input.value = name;
                     });
                     cell.appendChild(fees);
                 }
@@ -247,7 +240,7 @@ final class QuickChangeRenderer
                     var userUuid = cell.dataset.user;
                     var cells = rowCells(userUuid);
                     cells.forEach(function (rowCell) {
-                        rowCell.querySelectorAll("button").forEach(function (element) { element.disabled = true; });
+                        rowCell.querySelectorAll("input").forEach(function (input) { input.disabled = true; });
                     });
                     fetch(settings.saveUrl, {
                         method: "POST",
@@ -302,9 +295,10 @@ final class QuickChangeRenderer
                     "autoWidth": false
                 });
 
-                table.addEventListener("click", function (event) {
-                    var element = event.target.closest("button");
-                    if (!element || element.disabled) {
+                // Auswahl einer Mitgliedsart oder eines Zusatzbeitrags; bei Abbruch wird die Zelle zurückgesetzt
+                table.addEventListener("change", function (event) {
+                    var element = event.target;
+                    if (!element.classList.contains("adm-quick-type") && !element.classList.contains("adm-quick-fee")) {
                         return;
                     }
                     var cell = element.closest(".adm-quick-year");
@@ -314,7 +308,7 @@ final class QuickChangeRenderer
                     var question;
 
                     if (element.classList.contains("adm-quick-type")) {
-                        var art = element.dataset.type;
+                        var art = element.value;
                         if (art === state.value) {
                             return;
                         }
@@ -325,6 +319,7 @@ final class QuickChangeRenderer
                             question += "\n\nVereinsbeitritt: " + settings.entryHint.split("{date}").join("01.01." + year);
                         }
                         if (!window.confirm(question)) {
+                            renderCell(cell);
                             return;
                         }
                         // Zusatzbeiträge bleiben, soweit sie auch zur neuen Mitgliedsart gehören
@@ -334,14 +329,12 @@ final class QuickChangeRenderer
                         return;
                     }
 
-                    var fee = element.dataset.fee;
-                    if (fee === undefined) {
-                        return;
-                    }
+                    var fee = element.value;
                     var active = state.fees.indexOf(fee) !== -1;
                     question = name + ": Zusatzbeitrag „" + fee + "“ ab 01.01." + year + (active ? " entfernen?" : " hinzufügen?")
                         + othersHint(state, year);
                     if (!window.confirm(question)) {
+                        renderCell(cell);
                         return;
                     }
                     var fees = active
