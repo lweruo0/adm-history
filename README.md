@@ -44,6 +44,10 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
 
 4. Speichern.
 
+Für den Schnellwechsel (siehe „Bedienung“) auf dieselbe Weise einen zweiten Menüpunkt anlegen, z. B.
+Name `Schnellwechsel`, URL `/adm_plugins/adm-history/quick_change.php`, Icon `bi-lightning`. Beide
+Seiten verlinken sich zusätzlich gegenseitig über das Funktionsmenü der Seite.
+
 ### Kacheln auf der Übersichtsseite einbinden
 
 Die Admidio-Übersichtsseite (Startseite, `modules/overview.php`) wird aus der Smarty-Vorlage
@@ -148,6 +152,20 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   Fehlermeldung und die Auswahl springt zurück. Die Mitgliedschaften werden über die Admidio-Klassen
   geschrieben, damit Änderungsprotokoll und Benachrichtigungen von Admidio erhalten bleiben.
 - **Profil**: Vor- und Nachname verlinken auf das Profil der Person.
+- **Schnellwechsel** (`quick_change.php`, nur mit dem Recht zum Ändern): Tabelle aller Personen, die
+  im aktuellen Jahr oder im Folgejahr mindestens einen Tag Mitglied sind (Rolle einer Mitgliedsart
+  oder gemeinsame Rolle), mit je einer Spalte für beide Jahre. Jede Spalte zeigt einen Button je
+  Mitgliedsart und einen Button „Kündigung“; die Mitgliedsart am 31.12. ist farbig hervorgehoben
+  („Kündigung“ rot, wenn die Person am 31.12. kein Mitglied ist). Nur die in `transitions` erlaubten
+  Ziele sind aktiv. Ein Klick wechselt nach der Rückfrage ab dem 1. Januar des Jahres, mit denselben
+  Regeln wie die Auswahl der Mitglieder-Historie (siehe „Wechsel“); vorhandene Zusatzbeiträge bleiben,
+  soweit sie auch zur neuen Mitgliedsart gehören. Darunter stehen die optionalen Beitragsrollen der
+  Mitgliedsart am 31.12. als Umschalter (vorhandene mit Häkchen); ein Klick fügt den Zusatzbeitrag ab
+  dem 1. Januar hinzu oder entfernt ihn. Ohne Mitgliedsart am 31.12. sind Zusatzbeiträge nur Anzeige.
+  Gespeichert wird über die Programmierschnittstelle von `api.php` (`MembershipApi`), dabei aber mit
+  Rechteprüfung und CSRF-Token; danach werden beide Jahresspalten der Zeile aktualisiert. Achtung:
+  Ändern eines Zusatzbeitrags setzt die Mitgliedsart am 31.12. erneut ab dem 1. Januar; gab es im Jahr
+  einen Wechsel (Warnsymbol), wird er damit auf den 1. Januar vorgezogen. Die Rückfrage weist darauf hin.
 - **Übersichtskacheln**: Je Kachel (Folgejahr, aktuelles Jahr, Vorjahr) eine Tabelle mit einer Zeile
   je Eintrag in `overviewRoles` und den Spalten „01.01.“ und „31.12.“: Anzahl der Personen, die am
   Stichtag in der Rolle (bei mehreren Rollen: in mindestens einer davon) sind, jede Person einmal.
@@ -218,7 +236,7 @@ Die Tests laufen ohne Admidio und decken die Klassen ohne Admidio-Abhängigkeit 
 (`MembershipTypeConfig`), Jahreslogik (`YearHistory`), Änderungsplanung
 (`MembershipChangePlanner`), Zählung und HTML der Kacheln (`MemberCounter`, `OverviewTileRenderer`).
 `MembershipRepository`,
-`MembershipChanger`, `HistoryTableRenderer` und `ChangeListRenderer`
+`MembershipChanger`, `HistoryTableRenderer`, `QuickChangeRenderer` und `ChangeListRenderer`
 enthalten die Admidio-Aufrufe; Änderungen dort werden im laufenden Admidio geprüft. Für PHPStan sind
 die verwendeten Admidio-Signaturen in `stubs/admidio.php` hinterlegt.
 
@@ -236,9 +254,10 @@ Ohne Composer: `php tools/lint.php` und `php phpunit.phar` (Phar von https://pha
 
 ```
 index.php                          Controller: Rechte, Übersicht, Änderungen per fetch (mode=change, addfee, removefee; JSON)
+quick_change.php                   Schnellwechsel: Buttons je Mitgliedsart, Kündigung und Zusatzbeiträge für aktuelles Jahr und Folgejahr; Speichern über MembershipApi (mode=save; JSON)
 overview.php                       Kacheln für die Admidio-Übersichtsseite (load_admidio_plugin, Attribut year) und Liste der Ein- und Austritte (mode=changes)
 api.php                             schlanke Schnittstelle für externe Aufrufer (eigene Authentifizierung vorausgesetzt): setzt Mitgliedsart und Zusatzbeiträge per JSON (siehe AdmHistory\MembershipApi)
-autoload.php                       Autoloader für die Klassen in classes/ (von index.php, overview.php und api.php eingebunden)
+autoload.php                       Autoloader für die Klassen in classes/ (von index.php, overview.php, quick_change.php und api.php eingebunden)
 mitgliedsarten.php                 Konfiguration der Mitgliedsarten (Kürzel, Name, Farbe, Rollen), gemeinsame Rollen, Kacheln
 composer.json, phpunit.xml         Entwicklung (PHPUnit, PHPStan, Skripte lint/test/stan/check)
 phpstan.neon, stubs/admidio.php    PHPStan-Konfiguration und Admidio-Signaturen für die Analyse
@@ -256,8 +275,9 @@ classes/
   ChangeListRenderer.php           Seite mit der Liste der Ein- und Austritte einer Kachelzeile
   MembershipChangePlanner.php      berechnet die Datenbankoperationen eines Wechsels (ohne Admidio)
   MembershipChanger.php            prüft Rechte und führt den Wechsel über die Admidio-Entities aus
-  MembershipApi.php                 schlanke Schnittstelle für externe Aufrufer (api.php): Mitgliedsart und Zusatzbeiträge in einem Aufruf setzen
+  MembershipApi.php                 schlanke Schnittstelle (api.php, Schnellwechsel): Mitgliedsart und Zusatzbeiträge in einem Aufruf setzen
   HistoryTableRenderer.php         Tabelle mit DataTables, Auswahl und JavaScript für den Wechsel
+  QuickChangeRenderer.php          Tabelle des Schnellwechsels mit Buttons und JavaScript
   Html.php                         Escaping für die HTML-Ausgabe
 tests/                             PHPUnit-Tests (laufen ohne Admidio)
   bootstrap.php                    Autoloader und Tabellenkonstanten

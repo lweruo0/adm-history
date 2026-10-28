@@ -147,6 +147,18 @@ final class YearHistory
     }
 
     /**
+     * War die Person im Jahr mindestens einen Tag Mitglied, d. h. in einer Rolle einer Mitgliedsart
+     * oder in einer gemeinsamen Rolle? Grundlage der Personenauswahl im Schnellwechsel.
+     *
+     * @param array<int, array{type:string, begin:string, end:string}> $periods       Zeiträume je Mitgliedsart
+     * @param array<int, array{begin:string, end:string}>              $commonPeriods Zeiträume in den gemeinsamen Rollen
+     */
+    public function isMemberInYear(array $periods, array $commonPeriods, int $year): bool
+    {
+        return $this->hasPeriodInYear($periods, $year) || $this->hasPeriodInYear($commonPeriods, $year);
+    }
+
+    /**
      * War die Person im Jahr Mitglied (gemeinsame Rolle, z. B. „Mitglied“), ohne dass sich eine
      * Mitgliedsart ermitteln lässt? Solche Jahre werden in der Tabelle mit „?“ gekennzeichnet.
      *
@@ -181,6 +193,20 @@ final class YearHistory
             'others'  => $others,
             'unknown' => $this->isMemberWithoutType($periods, $commonPeriods, $year),
         ];
+    }
+
+    /**
+     * Zustand eines änderbaren Jahres wie yearState(), ergänzt um die optionalen Beitragsrollen
+     * (Zusatzbeiträge) des Jahres; Grundlage der Buttons im Schnellwechsel.
+     *
+     * @param array<int, array{type:string, begin:string, end:string}> $periods
+     * @param array<int, array{begin:string, end:string}>              $commonPeriods Zeiträume in den gemeinsamen Rollen
+     * @param array<int, array{role:string, begin:string, end:string}> $feePeriods    Zeiträume in den Beitragsrollen
+     * @return array{value:string, others:string[], unknown:bool, fees:string[]}
+     */
+    public function yearStateWithFees(array $periods, array $commonPeriods, array $feePeriods, int $year): array
+    {
+        return [...$this->yearState($periods, $year, $commonPeriods), 'fees' => $this->rolesInYear($feePeriods, $year)];
     }
 
     /**

@@ -337,27 +337,6 @@ final class HistoryTableRenderer
     }
 
     /**
-     * Text für die Rückfrage bei einem Wechsel, der als Vereinsbeitritt gilt; „{date}“ wird im
-     * JavaScript durch den Stichtag ersetzt. Leer, wenn weder gemeinsame Rollen noch ein Feld für
-     * das Beitrittsdatum konfiguriert sind.
-     */
-    private function entryHint(): string
-    {
-        $parts = [];
-        $commonRoles = $this->config->getCommonRoles();
-        if ($commonRoles !== []) {
-            $parts[] = count($commonRoles) === 1
-                ? 'die Rolle „' . $commonRoles[0] . '“ beginnt neu am {date}'
-                : 'die Rollen „' . implode('“, „', $commonRoles) . '“ beginnen neu am {date}';
-        }
-        if ($this->config->getEntryDateField() !== '') {
-            $parts[] = 'das Beitrittsdatum wird auf {date} gesetzt';
-        }
-
-        return $parts === [] ? '' : ucfirst(implode(', ', $parts)) . '.';
-    }
-
-    /**
      * DataTables-Initialisierung und Verarbeitung der Auswahlfelder: Wechsel der Mitgliedsart
      * (mode=change) und Hinzufügen eines Zusatzbeitrags (mode=addfee), jeweils per fetch an index.php.
      */
@@ -389,7 +368,7 @@ final class HistoryTableRenderer
             'types'       => $types,
             'transitions' => $this->config->getAllTransitions(),
             'entryFromTypes' => $this->config->getEntryFromTypes(),
-            'entryHint'   => $this->entryHint(),
+            'entryHint'   => $this->config->getEntryHint(),
             'language'    => $languageUrl,
         ], JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 

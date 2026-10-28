@@ -149,6 +149,9 @@ try {
 
     $page = PagePresenter::withHtmlIDAndHeadline('adm_history', $headline);
     $page->setContentFullWidth();
+    if ($canEdit) {
+        $page->addPageFunctionsMenuItem('adm_history_menu_quick', 'Schnellwechsel', ADMIDIO_URL . FOLDER_PLUGINS . '/' . basename(__DIR__) . '/quick_change.php', 'bi-lightning');
+    }
 
     $users = $loader->loadAll();
 

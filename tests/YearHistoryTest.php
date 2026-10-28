@@ -165,6 +165,38 @@ final class YearHistoryTest extends TestCase
         self::assertSame(['value' => '', 'others' => [], 'unknown' => false], $this->history->yearState([], 2019, $common));
     }
 
+    public function testIsMemberInYearConsidersTypeAndCommonRoles(): void
+    {
+        $periods = [['type' => 'A', 'begin' => '2020-01-01', 'end' => '2024-12-31']];
+        $commonPeriods = [['begin' => '2026-07-01', 'end' => '9999-12-31']];
+
+        self::assertTrue($this->history->isMemberInYear($periods, $commonPeriods, 2024));
+        self::assertFalse($this->history->isMemberInYear($periods, $commonPeriods, 2025));
+        self::assertTrue($this->history->isMemberInYear($periods, $commonPeriods, 2026), 'nur gemeinsame Rolle');
+        self::assertFalse($this->history->isMemberInYear([], [], 2026));
+    }
+
+    public function testYearStateWithFeesAddsFeeRolesOfYear(): void
+    {
+        $periods = [
+            ['type' => 'P', 'begin' => '2020-01-01', 'end' => '2026-06-30'],
+            ['type' => 'A', 'begin' => '2026-07-01', 'end' => '9999-12-31'],
+        ];
+        $feePeriods = [
+            ['role' => 'Bootsbeitrag', 'begin' => '2026-07-01', 'end' => '9999-12-31'],
+            ['role' => 'Erstbesatz', 'begin' => '2026-07-01', 'end' => '2026-12-31'],
+        ];
+
+        self::assertSame(
+            ['value' => 'A', 'others' => ['P'], 'unknown' => false, 'fees' => ['Bootsbeitrag', 'Erstbesatz']],
+            $this->history->yearStateWithFees($periods, [], $feePeriods, 2026)
+        );
+        self::assertSame(
+            ['value' => 'A', 'others' => [], 'unknown' => false, 'fees' => ['Bootsbeitrag']],
+            $this->history->yearStateWithFees($periods, [], $feePeriods, 2027)
+        );
+    }
+
     public function testFirstYearAcrossUsers(): void
     {
         $byUser = [

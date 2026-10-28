@@ -6,6 +6,7 @@ parameters:
         - index.php
         - overview.php
         - api.php
+        - quick_change.php
         - autoload.php
         - mitgliedsarten.php
     # Admidio ist zur Analyse nicht installiert; die verwendeten Klassen, Funktionen und

@@ -72,7 +72,7 @@ final class MembershipApi
         }
 
         return [
-            'type'       => $type?->key ?? '',
+            'type'       => $type->key ?? '',
             'fees'       => $this->history->rolesInYear($user['feePeriods'], $year),
             'operations' => $operations,
         ];

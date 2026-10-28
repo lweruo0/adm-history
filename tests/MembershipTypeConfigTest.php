@@ -205,6 +205,18 @@ final class MembershipTypeConfigTest extends TestCase
         self::assertSame('', $config->getEntryDateField());
     }
 
+    public function testEntryHintNamesCommonRolesAndEntryDate(): void
+    {
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), ['entryDateField' => 'BEITRITTSDATUM']));
+        self::assertSame('Die Rolle „Mitglied“ beginnt neu am {date}, das Beitrittsdatum wird auf {date} gesetzt.', $config->getEntryHint());
+
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), ['commonRoles' => ['Mitglied', 'Verein']]));
+        self::assertSame('Die Rollen „Mitglied“, „Verein“ beginnen neu am {date}.', $config->getEntryHint());
+
+        $config = new MembershipTypeConfig(array_merge(self::validConfig(), ['commonRoles' => []]));
+        self::assertSame('', $config->getEntryHint());
+    }
+
     public function testWithoutEntryConfigurationNoChangeIsClubEntry(): void
     {
         $config = new MembershipTypeConfig(self::validConfig());

@@ -483,6 +483,26 @@ final class MembershipTypeConfig
     }
 
     /**
+     * Text für die Rückfrage bei einem Wechsel, der als Vereinsbeitritt gilt; „{date}“ ersetzt das
+     * JavaScript durch den Stichtag. Leer, wenn weder gemeinsame Rollen noch ein Feld für das
+     * Beitrittsdatum konfiguriert sind.
+     */
+    public function getEntryHint(): string
+    {
+        $parts = [];
+        if ($this->commonRoles !== []) {
+            $parts[] = count($this->commonRoles) === 1
+                ? 'die Rolle „' . $this->commonRoles[0] . '“ beginnt neu am {date}'
+                : 'die Rollen „' . implode('“, „', $this->commonRoles) . '“ beginnen neu am {date}';
+        }
+        if ($this->entryDateField !== '') {
+            $parts[] = 'das Beitrittsdatum wird auf {date} gesetzt';
+        }
+
+        return $parts === [] ? '' : ucfirst(implode(', ', $parts)) . '.';
+    }
+
+    /**
      * Erlaubte Ziele je Ausgangs-Kürzel (für das JavaScript der Auswahl).
      * @return array<string, string[]>
      */
