@@ -82,6 +82,9 @@ final class QuickChangeRenderer
             .adm-quick-types, .adm-quick-fees { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
             .adm-quick-fees { margin-top: .25rem; }
             .adm-quick-fees:empty { display: none; }
+            /* ausgewählt in der Primärfarbe des Themes statt in --bs-secondary (fast schwarz) */
+            #' . self::TABLE_ID . ' .btn-check:checked + .btn {
+                color: var(--bs-body-bg, #fff) !important; background-color: var(--bs-primary); border-color: var(--bs-primary) !important; }
             /* das Theme färbt btn-outline-primary auch gesperrt mit !important in der Primärfarbe; gesperrte Ziele grau */
             #' . self::TABLE_ID . ' .btn-check:disabled:not(:checked) + .btn {
                 color: var(--bs-secondary-color, #6c757d) !important; border-color: var(--bs-border-color, #dee2e6) !important;
