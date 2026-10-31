@@ -11,6 +11,8 @@
  *   status     (GET)  Filter nach aktueller Mitgliedschaft: „active“ (heute Mitglied, Standard),
  *                     „former“ (früher Mitglied, heute nicht mehr) oder „all“
  *   years      (GET)  Anzahl der Jahre vor dem aktuellen Jahr (0 = alle); Standard aus mitgliedsarten.php
+ *   duration   (GET)  Spalte „Ununterbrochen seit“: „all“ (Mitglied in irgendeiner Mitgliedsart, Standard)
+ *                     oder Kürzel einer Mitgliedsart (z. B. „A“)
  */
 
 use Admidio\Infrastructure\Exception;
@@ -43,7 +45,6 @@ try {
     $history = new YearHistory($config);
 
     $currentYear = (int) date('Y');
-    $feeYears = [$currentYear, $currentYear + 1];
 
     // ----------------------------------------------------------------------
     // Übersicht: Tabelle aller Personen mit Mitgliedsart je Jahr
@@ -55,6 +56,11 @@ try {
     $getStatus = admFuncVariableIsValid($_GET, 'status', 'string', [
         'defaultValue' => HistoryTableRenderer::STATUS_ACTIVE,
         'validValues'  => HistoryTableRenderer::STATUS_OPTIONS,
+    ]);
+
+    $getDuration = admFuncVariableIsValid($_GET, 'duration', 'string', [
+        'defaultValue' => HistoryTableRenderer::DURATION_ALL,
+        'validValues'  => array_merge([HistoryTableRenderer::DURATION_ALL], array_keys($config->getTypes())),
     ]);
 
     $headline = 'Mitglieder-Historie';
@@ -85,8 +91,8 @@ try {
     $years = range($currentYear + 1, $firstYear); // absteigend
 
     $renderer = new HistoryTableRenderer($context, $config, $history);
-    $renderer->renderToolbar($page, $pluginUrl, $getYears, $getStatus);
-    $renderer->render($page, $users, $years, $feeYears);
+    $renderer->renderToolbar($page, $pluginUrl, $getYears, $getStatus, $getDuration);
+    $renderer->render($page, $users, $years, $getDuration);
 
     $page->show();
 } catch (Throwable $ex) {

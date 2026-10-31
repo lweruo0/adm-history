@@ -208,4 +208,27 @@ final class YearHistoryTest extends TestCase
         self::assertSame(1998, $this->history->firstYear($byUser));
         self::assertNull($this->history->firstYear(['u3' => []]));
     }
+
+    public function testContinuousSinceJoinsAdjacentPeriods(): void
+    {
+        $periods = [
+            ['begin' => '2010-01-01', 'end' => '2012-12-31'],
+            ['begin' => '2014-01-01', 'end' => '2016-12-31'],
+            ['begin' => '2017-01-01', 'end' => '2019-06-30'],
+            ['begin' => '2019-03-01', 'end' => '9999-12-31'],
+        ];
+
+        self::assertSame('2014-01-01', $this->history->continuousSince($periods, '2026-10-31'));
+        self::assertSame('2010-01-01', $this->history->continuousSince($periods, '2011-05-01'));
+        self::assertNull($this->history->continuousSince($periods, '2013-06-01'));
+        self::assertNull($this->history->continuousSince([], '2026-10-31'));
+    }
+
+    public function testContinuousSinceIsNullAfterEnd(): void
+    {
+        $periods = [['begin' => '2010-01-01', 'end' => '2020-12-31']];
+
+        self::assertNull($this->history->continuousSince($periods, '2026-10-31'));
+        self::assertSame('2010-01-01', $this->history->continuousSince($periods, '2020-12-31'));
+    }
 }

@@ -106,14 +106,19 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   werden (Standard aus `mitgliedsarten.php`, „alle Jahre“ ab der ältesten Mitgliedschaft, auch in
   den gemeinsamen Rollen). Personen ohne Mitgliedsart und ohne `?` im angezeigten Zeitraum werden
   ausgeblendet; mit „alle Jahre“ erscheinen sie.
+- **Ununterbrochen seit**: Spalte nach dem Nachnamen mit dem Beginn der heute laufenden
+  Mitgliedschaft ohne Unterbrechung und den vollen Jahren bis heute. Zeiträume, die sich überschneiden
+  oder direkt aneinander anschließen (z. B. Ende 31.12., Beginn 01.01.), zählen als eine
+  Mitgliedschaft. Die Auswahl „Ununterbrochen seit“ über der Tabelle legt fest, was zählt: „Mitglied“
+  (alle Mitgliedsarten und gemeinsamen Rollen, ein Wechsel z. B. von Jugend zu Aktiv unterbricht nicht)
+  oder eine einzelne Mitgliedsart (z. B. nur Aktiv). Ein Klick auf die Spaltenüberschrift sortiert nach
+  der Dauer, die längste zuerst; Personen ohne laufende Mitgliedschaft stehen am Ende.
 - **Nur Ansicht**: Die Mitglieder-Historie ändert nichts. Auch das aktuelle Jahr und das Folgejahr
   zeigen die Mitgliedsarten nur als Kürzel; mit dem Recht zum Ändern führt der Menüpunkt
   „Schnellwechsel“ zur Änderung.
-- **Zusatz**: Neben dem aktuellen Jahr und dem Folgejahr steht je eine Spalte „Zusatz“ mit den
-  optionalen Beitragsrollen (`optionalFeeRoles`), in denen die Person in diesem Jahr mindestens
-  einen Tag ist. Beitragsrollen mit Beitragszeitraum „einmalig“ (Einstellung der Rolle in Admidio)
+- **Zusatzbeiträge**: Die optionalen Beitragsrollen (`optionalFeeRoles`) zeigt und ändert nur der
+  Schnellwechsel. Beitragsrollen mit Beitragszeitraum „einmalig“ (Einstellung der Rolle in Admidio)
   zählen nur im Jahr, in dem die Mitgliedschaft beginnt, auch wenn sie in Admidio offen weiterläuft.
-  Die Spalte erscheint nur, wenn optionale Beitragsrollen konfiguriert sind.
 - **Zusatzbeitrag hinzufügen** (im Schnellwechsel): Möglich sind die noch fehlenden Zusatzbeiträge
   der Mitgliedsart, die die Person am 31.12. des Jahres hat. Nach der Rückfrage beginnt die Beitragsrolle am 1. Januar des Jahres (eine am Vortag endende
   Mitgliedschaft wird fortgesetzt); einmalige Beitragsrollen enden am 31. Dezember desselben
@@ -220,7 +225,7 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
 | `types` | Mitgliedsarten in Anzeigereihenfolge. Schlüssel ist das Kürzel (ein bis drei Zeichen), Wert ein Array mit `name` (Anzeigename), `color` (Hintergrundfarbe als CSS-Wert, z. B. `#cfe2ff`) und `roles` (eine Rolle oder Liste von Rollen). Eine Person hat die Mitgliedsart, sobald sie in einer der Rollen ist; beim Wechsel werden alle Rollen der neuen Mitgliedsart begonnen. Jede Rolle darf nur zu einer Mitgliedsart gehören. |
 | `commonRoles` | Rollen, in denen jedes Mitglied unabhängig von der Mitgliedsart ist (übergeordnete Rolle, z. B. „Mitglied“). Sie erscheinen nicht als eigenes Kürzel in den Jahresspalten; ein Jahr, in dem jemand nur in einer dieser Rollen war, zeigt `?`. Beim Wechsel werden sie mitgeführt. Leer, wenn es keine solche Rolle gibt. |
 | `mandatoryFeeRoles` | Pflicht-Beitragsrollen je Kürzel (Rolle oder Liste). Beim Wechsel zu der Mitgliedsart werden sie begonnen, beim Wechsel weg von ihr oder beim Austritt beendet. Mitgliedsarten ohne Pflicht-Beitragsrolle können fehlen. Beitragsrollen dürfen keine Rollen einer Mitgliedsart und keine gemeinsamen Rollen sein. |
-| `optionalFeeRoles` | Optionale Beitragsrollen (Zusatzbeiträge) je Kürzel. Sie werden beim Wechsel nicht begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie. Für das aktuelle Jahr und das Folgejahr erscheinen sie in der Spalte „Zusatz“. Rollen mit Beitragszeitraum „einmalig“ gelten nur im Jahr ihres Beginns und werden bei einem Wechsel nicht ins Folgejahr übernommen. Eine Rolle darf bei mehreren Mitgliedsarten stehen, aber nicht zugleich Pflicht und optional derselben Mitgliedsart sein. |
+| `optionalFeeRoles` | Optionale Beitragsrollen (Zusatzbeiträge) je Kürzel. Sie werden beim Wechsel nicht begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie. Sie erscheinen nur im Schnellwechsel. Rollen mit Beitragszeitraum „einmalig“ gelten nur im Jahr ihres Beginns und werden bei einem Wechsel nicht ins Folgejahr übernommen. Eine Rolle darf bei mehreren Mitgliedsarten stehen, aber nicht zugleich Pflicht und optional derselben Mitgliedsart sein. |
 | `transitions` | Erlaubte Wechsel im Schnellwechsel: bisheriges Kürzel => neues Kürzel oder Liste neuer Kürzel. `''` steht für „kein Mitglied“ (als Schlüssel: Eintritt, als Ziel: Austritt), `'*'` für alle Ziele. Beibehalten ist immer erlaubt. Fehlt der Schlüssel, ist jeder Wechsel erlaubt; ist er vorhanden, erlaubt ein nicht genanntes bisheriges Kürzel keinen Wechsel (alle anderen Buttons sind dann gesperrt). |
 | `entryFromTypes` | Kürzel, deren Wechsel zu einer anderen Mitgliedsart als Vereinsbeitritt gilt (z. B. `['J']`: aus der Jugend). Die gemeinsamen Rollen beginnen dann neu am 1. Januar des gewählten Jahres und das Beitrittsdatum wird gesetzt. `''` steht für „kein Mitglied“ (Neueintritt). Ein Austritt ist nie ein Beitritt. Leer oder fehlend: kein Wechsel gilt als Beitritt. |
 | `entryDateField` | Interner Name des Admidio-Profilfelds (Typ Datum) für das Beitrittsdatum (Administration → Profilfelder, „Interner Name“). Beim Vereinsbeitritt wird es auf den 1. Januar des gewählten Jahres gesetzt. Leer oder fehlend: das Beitrittsdatum wird nicht gesetzt. Fehlt das Feld in Admidio oder ist es kein Datumsfeld, scheitert der Wechsel mit einer Fehlermeldung. |

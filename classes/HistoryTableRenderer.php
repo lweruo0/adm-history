@@ -6,9 +6,8 @@ use Admidio\UI\Presenter\PagePresenter;
 
 /**
  * Stellt die Mitglieder-Historie als reine Ansicht dar: Vorname, Nachname und eine Spalte je Jahr
- * (absteigend) mit den Mitgliedsarten des Jahres als farbige Kürzel, dazu für das aktuelle Jahr und
- * das Folgejahr je eine Spalte „Zusatz“ mit den optionalen Beitragsrollen. Geändert wird die
- * Mitgliedsart im Schnellwechsel (quick_change.php), nicht hier.
+ * (absteigend) mit den Mitgliedsarten des Jahres als farbige Kürzel. Geändert werden Mitgliedsart
+ * und Zusatzbeiträge im Schnellwechsel (quick_change.php), nicht hier.
  *
  * Die Tabelle wird mit der von Admidio mitgelieferten DataTables-Bibliothek durchsuchbar und nach
  * Vor- und Nachname sortierbar gemacht (die Jahresspalten sind nicht sortierbar, die Zeilen sind
@@ -27,6 +26,9 @@ final class HistoryTableRenderer
     public const STATUS_ALL = 'all';
     public const STATUS_OPTIONS = [self::STATUS_ACTIVE, self::STATUS_FORMER, self::STATUS_ALL];
 
+    /** Spalte „Ununterbrochen seit“ (GET-Parameter duration): alle Mitgliedsarten oder ein Kürzel */
+    public const DURATION_ALL = 'all';
+
     /** Anzeigetexte des Filters in Anzeigereihenfolge */
     private const STATUS_LABELS = [
         self::STATUS_ACTIVE => 'Aktive Kontakte',
@@ -43,12 +45,14 @@ final class HistoryTableRenderer
 
     /**
      * Filter nach aktueller Mitgliedschaft (GET-Parameter status), Auswahl „Jahre zurück“
-     * (GET-Parameter years) und Legende der Mitgliedsarten.
+     * (GET-Parameter years), Auswahl für die Spalte „Ununterbrochen seit“ (GET-Parameter duration)
+     * und Legende der Mitgliedsarten.
      *
-     * @param int    $selectedYears  aktuell gewählte Anzahl Jahre vor dem aktuellen Jahr (0 = alle)
-     * @param string $selectedStatus aktuell gewählter Filter (eine der STATUS_*-Konstanten)
+     * @param int    $selectedYears    aktuell gewählte Anzahl Jahre vor dem aktuellen Jahr (0 = alle)
+     * @param string $selectedStatus   aktuell gewählter Filter (eine der STATUS_*-Konstanten)
+     * @param string $selectedDuration DURATION_ALL oder Kürzel einer Mitgliedsart
      */
-    public function renderToolbar(PagePresenter $page, string $pluginUrl, int $selectedYears, string $selectedStatus): void
+    public function renderToolbar(PagePresenter $page, string $pluginUrl, int $selectedYears, string $selectedStatus, string $selectedDuration): void
     {
         $e = Html::escape(...);
 
@@ -78,6 +82,14 @@ final class HistoryTableRenderer
                 . ($years === 0 ? 'alle Jahre' : $years . ' Jahre') . '</option>';
         }
         $html .= '</select></div>'
+            . '<div class="col-12 col-sm-auto">'
+            . '<label for="adm_history_duration" class="form-label fw-bold">Ununterbrochen seit</label>'
+            . '<select class="form-select adm-history-filter" id="adm_history_duration" name="duration">'
+            . '<option value="' . self::DURATION_ALL . '"' . ($selectedDuration === self::DURATION_ALL ? ' selected' : '') . '>Mitglied (alle Mitgliedsarten)</option>';
+        foreach ($this->config->getTypes() as $type) {
+            $html .= '<option value="' . $e($type->key) . '"' . ($type->key === $selectedDuration ? ' selected' : '') . '>' . $e($type->name) . '</option>';
+        }
+        $html .= '</select></div>'
             . '<div class="col-12 col-sm"><div class="fw-bold form-label">Mitgliedsarten</div><div>';
         foreach ($this->config->getTypes() as $type) {
             $html .= $this->badge($type) . ' <span class="me-3">' . $e($type->name)
@@ -88,8 +100,9 @@ final class HistoryTableRenderer
         }
         $html .= '</div></div>'
             . '<div class="col-12 form-text">Je Jahr stehen alle Mitgliedsarten, in denen die Person in diesem Jahr mindestens einen Tag war. '
-            . 'Geändert wird die Mitgliedsart im Schnellwechsel. „Aktive Kontakte“ sind heute in einer der konfigurierten Rollen, „Ehemalige Kontakte“ waren es früher. '
-            . 'Die Spalte „Zusatz“ zeigt die optionalen Beitragsrollen (Zusatzbeiträge) des Jahres. '
+            . 'Geändert wird die Mitgliedsart im Schnellwechsel. „Ununterbrochen seit“ zeigt den Beginn der heute laufenden '
+            . 'Mitgliedschaft ohne Unterbrechung (aneinander anschließende Zeiträume zählen als eine) und die vollen Jahre; '
+            . 'ein Klick auf die Spaltenüberschrift sortiert nach der Dauer. „Aktive Kontakte“ sind heute in einer der konfigurierten Rollen, „Ehemalige Kontakte“ waren es früher. '
             . 'Personen ohne Mitgliedsart im angezeigten Zeitraum werden ausgeblendet.</div>'
             . '</form></div></div>';
 
@@ -107,14 +120,12 @@ final class HistoryTableRenderer
      *
      * @param array<string, array<string, mixed>> $users    Personen aus HistoryLoader::loadAll()
      * @param int[]                               $years    anzuzeigende Jahre, absteigend
-     * @param int[]                               $feeYears Jahre mit Spalte „Zusatz“ (aktuelles Jahr und Folgejahr)
+     * @param string                              $duration Spalte „Ununterbrochen seit“: DURATION_ALL oder Kürzel einer Mitgliedsart
      */
-    public function render(PagePresenter $page, array $users, array $years, array $feeYears): void
+    public function render(PagePresenter $page, array $users, array $years, string $duration = self::DURATION_ALL): void
     {
         $e = Html::escape(...);
-
-        // Spalte „Zusatz“ (optionale Beitragsrollen) nur, wenn welche konfiguriert sind
-        $showFees = $this->config->getOptionalFeeRoleNames() !== [];
+        $today = date('Y-m-d');
 
         $rows = [];
         foreach ($users as $user) {
@@ -125,9 +136,6 @@ final class HistoryTableRenderer
                 $inYear = $this->history->typesInYear($user['periods'], $year);
                 $visible = $visible || $inYear !== [] || $state['unknown'];
                 $cells[] = $this->historyCell($inYear, $state['unknown']);
-                if ($showFees && in_array($year, $feeYears, true)) {
-                    $cells[] = $this->feeCell($this->history->rolesInYear($user['feePeriods'], $year));
-                }
             }
             if (!$visible) {
                 continue;
@@ -137,25 +145,21 @@ final class HistoryTableRenderer
             $rows[] = '<tr data-user="' . $e($user['usr_uuid']) . '">'
                 . '<td><a href="' . $profileUrl . '">' . $e($user['first_name']) . '</a></td>'
                 . '<td><a href="' . $profileUrl . '">' . $e($user['last_name']) . '</a></td>'
+                . $this->durationCell($this->durationPeriods($user, $duration), $today)
                 . implode('', $cells) . '</tr>';
         }
 
-        $headers = '<th>Vorname</th><th>Nachname</th>';
+        $durationTitle = $duration === self::DURATION_ALL ? 'Mitglied' : ($this->config->getType($duration)->name ?? $duration);
+        $headers = '<th>Vorname</th><th>Nachname</th>'
+            . '<th title="' . $e($durationTitle) . ' ohne Unterbrechung bis heute">' . $e($durationTitle) . ' seit</th>';
         foreach ($years as $year) {
             $headers .= '<th class="text-center adm-history-year">' . $year . '</th>';
-            if ($showFees && in_array($year, $feeYears, true)) {
-                $headers .= '<th class="adm-history-year" title="Zusatzbeiträge ' . $year . ': optionale Beitragsrollen, in denen die Person im Jahr ist (einmalige nur im Jahr des Beginns)">'
-                    . 'Zusatz ' . $year . '</th>';
-            }
         }
 
         $page->addHtml('<style>
             .adm-history-badge { display: inline-block; min-width: 1.7em; padding: 0 .3em; margin: 0 1px; border-radius: .25rem;
                 line-height: 1.3; text-align: center; font-weight: 600; color: #212529; border: 1px solid rgba(0,0,0,.15); }
             .adm-history-unknown { background-color: #e9ecef; color: #6c757d; }
-            .adm-history-fee { display: inline-block; padding: 0 .3em; margin: 0 1px; border-radius: .25rem; line-height: 1.3;
-                font-size: .85em; background-color: #f8f9fa; color: #212529; border: 1px solid rgba(0,0,0,.15); }
-            #' . self::TABLE_ID . ' td.adm-history-fees { text-align: left; }
             #' . self::TABLE_ID . ' td, #' . self::TABLE_ID . ' th { white-space: nowrap; padding: .1rem .4rem; line-height: 1.3; vertical-align: middle; }
             #' . self::TABLE_ID . ' td.adm-history-year { text-align: center; }
             /* Jahresspalten sind nicht sortierbar: kein Sortier-Symbol und normaler Mauszeiger */
@@ -197,17 +201,37 @@ final class HistoryTableRenderer
     }
 
     /**
-     * Zelle „Zusatz“: optionale Beitragsrollen, in denen die Person im Jahr ist.
-     * @param string[] $roleNames vorhandene Zusatzbeiträge des Jahres
+     * Zeiträume für die Spalte „Ununterbrochen seit“: alle Mitgliedsarten und die gemeinsamen
+     * Rollen oder nur die gewählte Mitgliedsart.
+     *
+     * @param array<string, mixed> $user
+     * @return array<int, array{begin:string, end:string}>
      */
-    private function feeCell(array $roleNames): string
+    private function durationPeriods(array $user, string $duration): array
     {
-        $html = '<td class="adm-history-fees">';
-        foreach ($roleNames as $roleName) {
-            $html .= '<span class="adm-history-fee">' . Html::escape($roleName) . '</span>';
+        if ($duration === self::DURATION_ALL) {
+            return array_merge($user['periods'], $user['commonPeriods']);
         }
 
-        return $html . '</td>';
+        return array_values(array_filter($user['periods'], static fn(array $period): bool => $period['type'] === $duration));
+    }
+
+    /**
+     * Zelle „Ununterbrochen seit“: Beginn und volle Jahre; sortiert wird nach dem Beginn (data-order),
+     * ohne laufende Mitgliedschaft ans Ende.
+     *
+     * @param array<int, array{begin:string, end:string}> $periods
+     */
+    private function durationCell(array $periods, string $today): string
+    {
+        $since = $this->history->continuousSince($periods, $today);
+        if ($since === null) {
+            return '<td data-order="9999-12-31"></td>';
+        }
+        $years = (new \DateTimeImmutable($since))->diff(new \DateTimeImmutable($today))->y;
+
+        return '<td data-order="' . Html::escape($since) . '">' . date('d.m.Y', (int) strtotime($since))
+            . ' <span class="text-muted">(' . $years . ' J.)</span></td>';
     }
 
     /**

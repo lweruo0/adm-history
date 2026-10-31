@@ -147,6 +147,45 @@ final class YearHistory
     }
 
     /**
+     * Beginn der ununterbrochenen Mitgliedschaft, die den Stichtag einschließt: Zeiträume, die sich
+     * überschneiden oder direkt aneinander anschließen (Ende 31.12., Beginn 01.01.), gelten als eine
+     * Mitgliedschaft. Grundlage der Spalte „Ununterbrochen seit“.
+     *
+     * @param array<int, array{begin:string, end:string}> $periods beliebige Zeiträume (z. B. einer Mitgliedsart)
+     * @param string                                      $date    Stichtag (Y-m-d)
+     * @return string|null Beginn (Y-m-d) oder null, wenn am Stichtag kein Zeitraum läuft
+     */
+    public function continuousSince(array $periods, string $date): ?string
+    {
+        usort($periods, static fn(array $a, array $b): int => $a['begin'] <=> $b['begin']);
+        $begin = null;
+        $end = null;
+        foreach ($periods as $period) {
+            if ($begin === null || $period['begin'] > self::nextDay($end)) {
+                if ($begin !== null && $begin <= $date && $end >= $date) {
+                    return $begin;
+                }
+                $begin = $period['begin'];
+                $end = $period['end'];
+            } elseif ($period['end'] > $end) {
+                $end = $period['end'];
+            }
+        }
+
+        return $begin !== null && $begin <= $date && $end >= $date ? $begin : null;
+    }
+
+    /** Folgetag eines Datums (Y-m-d); das offene Ende 9999-12-31 bleibt unverändert. */
+    private static function nextDay(string $date): string
+    {
+        if ($date >= '9999-12-31') {
+            return $date;
+        }
+
+        return (new \DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d');
+    }
+
+    /**
      * War die Person im Jahr mindestens einen Tag Mitglied, d. h. in einer Rolle einer Mitgliedsart
      * oder in einer gemeinsamen Rolle? Grundlage der Personenauswahl im Schnellwechsel.
      *
