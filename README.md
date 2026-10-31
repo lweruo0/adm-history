@@ -3,9 +3,9 @@
 Admidio-Plugin, das für alle Personen die Mitgliedsart je Kalenderjahr als Tabelle zeigt:
 Vorname, Nachname, Folgejahr, aktuelles Jahr, Vorjahr, ... In jeder Jahresspalte stehen die
 Kürzel der Mitgliedsarten (z. B. `A`, `E`, `F`, `J`, `P` für „Aktiv“, „Ehren“, „Förder“, „Jugend“
-und „Passiv“) mit eigener Hintergrundfarbe. Für das aktuelle Jahr und das Folgejahr bietet jede
-Zeile eine Auswahl, mit der die Mitgliedsart ab dem 1. Januar des jeweiligen Jahres gewechselt
-werden kann.
+und „Passiv“) mit eigener Hintergrundfarbe. Die Mitglieder-Historie ist eine reine Ansicht; die
+Mitgliedsart für das aktuelle Jahr und das Folgejahr wird im Schnellwechsel (`quick_change.php`)
+ab dem 1. Januar des jeweiligen Jahres gewechselt.
 
 Zusätzlich liefert das Plugin Kacheln für die Admidio-Übersichtsseite: je eine für das Folgejahr,
 das aktuelle Jahr und das Vorjahr mit einer kleinen Tabelle, wie viele Personen am 1. Januar und am
@@ -98,8 +98,7 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   mindestens einen Tag war, in zeitlicher Reihenfolge (bei einem Wechsel im Jahr also z. B. `J A`).
   Grundlage sind alle, auch beendete, Mitgliedschaften in den konfigurierten Rollen. War die Person
   in einem Jahr nur in einer gemeinsamen Rolle (`commonRoles`, z. B. „Mitglied“), ohne dass sich eine
-  Mitgliedsart ermitteln lässt, zeigt die Spalte `?` (auch neben der Auswahl im aktuellen Jahr und
-  Folgejahr). Sortierbar ist die Tabelle nur nach Vor- und Nachname.
+  Mitgliedsart ermitteln lässt, zeigt die Spalte `?`. Sortierbar ist die Tabelle nur nach Vor- und Nachname.
 - **Kontakte**: Auswahl über der Tabelle, welche Personen erscheinen: „Aktive Kontakte“ (Standard)
   sind heute in einer Rolle einer Mitgliedsart oder in einer gemeinsamen Rolle, „Ehemalige Kontakte“
   waren es früher, sind es heute aber nicht mehr, „Alle Kontakte“ zeigt beide.
@@ -107,26 +106,24 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
   werden (Standard aus `mitgliedsarten.php`, „alle Jahre“ ab der ältesten Mitgliedschaft, auch in
   den gemeinsamen Rollen). Personen ohne Mitgliedsart und ohne `?` im angezeigten Zeitraum werden
   ausgeblendet; mit „alle Jahre“ erscheinen sie.
-- **Aktuelles Jahr und Folgejahr**: Die Auswahl zeigt die Mitgliedsart am 31.12. des Jahres,
-  `–` bedeutet „kein Mitglied“. Kam im Jahr noch eine weitere Mitgliedsart vor (Wechsel oder
-  Austritt innerhalb des Jahres), zeigt ein Warnsymbol mit Tooltip die Einzelheiten.
+- **Nur Ansicht**: Die Mitglieder-Historie ändert nichts. Auch das aktuelle Jahr und das Folgejahr
+  zeigen die Mitgliedsarten nur als Kürzel; mit dem Recht zum Ändern führt der Menüpunkt
+  „Schnellwechsel“ zur Änderung.
 - **Zusatz**: Neben dem aktuellen Jahr und dem Folgejahr steht je eine Spalte „Zusatz“ mit den
   optionalen Beitragsrollen (`optionalFeeRoles`), in denen die Person in diesem Jahr mindestens
   einen Tag ist. Beitragsrollen mit Beitragszeitraum „einmalig“ (Einstellung der Rolle in Admidio)
   zählen nur im Jahr, in dem die Mitgliedschaft beginnt, auch wenn sie in Admidio offen weiterläuft.
   Die Spalte erscheint nur, wenn optionale Beitragsrollen konfiguriert sind.
-- **Zusatzbeitrag hinzufügen**: Mit dem Recht zum Ändern steht in der Spalte „Zusatz“ eine Auswahl
-  `+` mit den noch fehlenden Zusatzbeiträgen der Mitgliedsart, die die Person am 31.12. des Jahres
-  hat. Nach der Rückfrage beginnt die Beitragsrolle am 1. Januar des Jahres (eine am Vortag endende
+- **Zusatzbeitrag hinzufügen** (im Schnellwechsel): Möglich sind die noch fehlenden Zusatzbeiträge
+  der Mitgliedsart, die die Person am 31.12. des Jahres hat. Nach der Rückfrage beginnt die Beitragsrolle am 1. Januar des Jahres (eine am Vortag endende
   Mitgliedschaft wird fortgesetzt); einmalige Beitragsrollen enden am 31. Dezember desselben
   Jahres, alle anderen laufen offen weiter. Ohne Mitgliedsart im Jahr ist kein Zusatzbeitrag
   möglich.
-- **Zusatzbeitrag entfernen**: Mit dem Recht zum Ändern trägt jedes Kürzel in der Spalte „Zusatz“
-  ein `×`. Nach der Rückfrage endet die Beitragsrolle am 31. Dezember des Vorjahres; eine erst an
+- **Zusatzbeitrag entfernen** (im Schnellwechsel): Nach der Rückfrage endet die Beitragsrolle am 31. Dezember des Vorjahres; eine erst an
   oder nach dem 1. Januar des Jahres begonnene Mitgliedschaft wird gelöscht.
-- **Wechsel**: Eine andere Mitgliedsart auswählen und die Rückfrage bestätigen. Die Auswahl bietet
-  nur die in `mitgliedsarten.php` (`transitions`) erlaubten Ziele an, einschließlich Austritt (`–`);
-  ohne erlaubtes Ziel ist sie gesperrt. Der Wechsel gilt ab dem 1. Januar des gewählten Jahres:
+- **Wechsel** (im Schnellwechsel): Eine andere Mitgliedsart wählen und die Rückfrage bestätigen.
+  Angeboten werden nur die in `mitgliedsarten.php` (`transitions`) erlaubten Ziele, einschließlich
+  Austritt („Kündigung“). Der Wechsel gilt ab dem 1. Januar des gewählten Jahres:
   - alle Rollen der neuen Mitgliedsart werden ab diesem Tag begonnen (eine am Vortag endende
     Mitgliedschaft wird fortgesetzt, eine später beginnende vorgezogen),
   - alle Rollen der übrigen Mitgliedsarten enden am 31. Dezember des Vorjahres (Mitgliedschaften, die
@@ -147,18 +144,17 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
     Beitrittsdatum im Profilfeld `entryDateField` auf den Stichtag gesetzt (dafür ist das Recht
     zum Bearbeiten des Profils nötig). Die Rückfrage weist auf beides hin.
 
-  Die Änderung wird ohne Neuladen der Seite gespeichert; beide änderbaren Spalten der Zeile und die
-  Spalten „Zusatz“ werden danach aktualisiert. Schlägt sie fehl (z. B. fehlendes Recht an einer Rolle), erscheint die
-  Fehlermeldung und die Auswahl springt zurück. Die Mitgliedschaften werden über die Admidio-Klassen
-  geschrieben, damit Änderungsprotokoll und Benachrichtigungen von Admidio erhalten bleiben.
+  Schlägt eine Änderung fehl (z. B. fehlendes Recht an einer Rolle), erscheint die Fehlermeldung.
+  Die Mitgliedschaften werden über die Admidio-Klassen geschrieben, damit Änderungsprotokoll und
+  Benachrichtigungen von Admidio erhalten bleiben.
 - **Profil**: Vor- und Nachname verlinken auf das Profil der Person.
 - **Schnellwechsel** (`quick_change.php`, nur mit dem Recht zum Ändern): Tabelle aller Personen, die
   im aktuellen Jahr oder im Folgejahr mindestens einen Tag Mitglied sind (Rolle einer Mitgliedsart
   oder gemeinsame Rolle), mit je einer Spalte für beide Jahre. Jede Spalte zeigt einen Button je
   Mitgliedsart und einen Button „Kündigung“ im Stil des Admidio-Themes; die Mitgliedsart am 31.12. ist
   ausgewählt (dunkel hinterlegt, „Kündigung“, wenn die Person am 31.12. kein Mitglied ist). Nur die in
-  `transitions` erlaubten Ziele sind aktiv. Ein Klick wechselt nach der Rückfrage ab dem 1. Januar des Jahres, mit denselben
-  Regeln wie die Auswahl der Mitglieder-Historie (siehe „Wechsel“); vorhandene Zusatzbeiträge bleiben,
+  `transitions` erlaubten Ziele sind aktiv. Ein Klick wechselt nach der Rückfrage ab dem 1. Januar des Jahres, nach den
+  Regeln unter „Wechsel“; vorhandene Zusatzbeiträge bleiben,
   soweit sie auch zur neuen Mitgliedsart gehören. Darunter stehen die optionalen Beitragsrollen der
   Mitgliedsart am 31.12. als Umschalter (vorhandene dunkel hinterlegt); ein Klick fügt den Zusatzbeitrag ab
   dem 1. Januar hinzu oder entfernt ihn. Ohne Mitgliedsart am 31.12. sind Zusatzbeiträge nur Anzeige.
@@ -225,7 +221,7 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
 | `commonRoles` | Rollen, in denen jedes Mitglied unabhängig von der Mitgliedsart ist (übergeordnete Rolle, z. B. „Mitglied“). Sie erscheinen nicht als eigenes Kürzel in den Jahresspalten; ein Jahr, in dem jemand nur in einer dieser Rollen war, zeigt `?`. Beim Wechsel werden sie mitgeführt. Leer, wenn es keine solche Rolle gibt. |
 | `mandatoryFeeRoles` | Pflicht-Beitragsrollen je Kürzel (Rolle oder Liste). Beim Wechsel zu der Mitgliedsart werden sie begonnen, beim Wechsel weg von ihr oder beim Austritt beendet. Mitgliedsarten ohne Pflicht-Beitragsrolle können fehlen. Beitragsrollen dürfen keine Rollen einer Mitgliedsart und keine gemeinsamen Rollen sein. |
 | `optionalFeeRoles` | Optionale Beitragsrollen (Zusatzbeiträge) je Kürzel. Sie werden beim Wechsel nicht begonnen, bleiben aber bestehen, solange sie zur neuen Mitgliedsart gehören; sonst enden sie. Für das aktuelle Jahr und das Folgejahr erscheinen sie in der Spalte „Zusatz“. Rollen mit Beitragszeitraum „einmalig“ gelten nur im Jahr ihres Beginns und werden bei einem Wechsel nicht ins Folgejahr übernommen. Eine Rolle darf bei mehreren Mitgliedsarten stehen, aber nicht zugleich Pflicht und optional derselben Mitgliedsart sein. |
-| `transitions` | Erlaubte Wechsel in der Auswahl: bisheriges Kürzel => neues Kürzel oder Liste neuer Kürzel. `''` steht für „kein Mitglied“ (als Schlüssel: Eintritt, als Ziel: Austritt), `'*'` für alle Ziele. Beibehalten ist immer erlaubt. Fehlt der Schlüssel, ist jeder Wechsel erlaubt; ist er vorhanden, erlaubt ein nicht genanntes bisheriges Kürzel keinen Wechsel (die Auswahl ist dann gesperrt). |
+| `transitions` | Erlaubte Wechsel im Schnellwechsel: bisheriges Kürzel => neues Kürzel oder Liste neuer Kürzel. `''` steht für „kein Mitglied“ (als Schlüssel: Eintritt, als Ziel: Austritt), `'*'` für alle Ziele. Beibehalten ist immer erlaubt. Fehlt der Schlüssel, ist jeder Wechsel erlaubt; ist er vorhanden, erlaubt ein nicht genanntes bisheriges Kürzel keinen Wechsel (alle anderen Buttons sind dann gesperrt). |
 | `entryFromTypes` | Kürzel, deren Wechsel zu einer anderen Mitgliedsart als Vereinsbeitritt gilt (z. B. `['J']`: aus der Jugend). Die gemeinsamen Rollen beginnen dann neu am 1. Januar des gewählten Jahres und das Beitrittsdatum wird gesetzt. `''` steht für „kein Mitglied“ (Neueintritt). Ein Austritt ist nie ein Beitritt. Leer oder fehlend: kein Wechsel gilt als Beitritt. |
 | `entryDateField` | Interner Name des Admidio-Profilfelds (Typ Datum) für das Beitrittsdatum (Administration → Profilfelder, „Interner Name“). Beim Vereinsbeitritt wird es auf den 1. Januar des gewählten Jahres gesetzt. Leer oder fehlend: das Beitrittsdatum wird nicht gesetzt. Fehlt das Feld in Admidio oder ist es kein Datumsfeld, scheitert der Wechsel mit einer Fehlermeldung. |
 | `overviewRoles` | Zeilen der Kacheln auf der Übersichtsseite in Anzeigereihenfolge. Ein Eintrag ist ein Rollenname (Beschriftung = Rollenname) oder Beschriftung => Rolle bzw. Liste von Rollen; bei mehreren Rollen zählt jede Person, die in mindestens einer davon ist, einmal. Die Rollen müssen nicht zu einer Mitgliedsart gehören. Fehlt der Schlüssel, zeigt die Kachel einen Hinweis. |
@@ -259,7 +255,7 @@ Ohne Composer: `php tools/lint.php` und `php phpunit.phar` (Phar von https://pha
 ## Aufbau
 
 ```
-index.php                          Controller: Rechte, Übersicht, Änderungen per fetch (mode=change, addfee, removefee; JSON)
+index.php                          Controller der Mitglieder-Historie: Rechte, Filter, Tabelle (nur Ansicht)
 quick_change.php                   Schnellwechsel: Buttons je Mitgliedsart, Kündigung und Zusatzbeiträge für aktuelles Jahr und Folgejahr; Speichern über MembershipApi (mode=save; JSON)
 overview.php                       Kacheln für die Admidio-Übersichtsseite (load_admidio_plugin, Attribut year) und Liste der Ein- und Austritte (mode=changes)
 autoload.php                       Autoloader für die Klassen in classes/ (von index.php, overview.php und quick_change.php eingebunden; auch für andere Plugins, die MembershipApi nutzen)
@@ -281,7 +277,7 @@ classes/
   MembershipChangePlanner.php      berechnet die Datenbankoperationen eines Wechsels (ohne Admidio)
   MembershipChanger.php            prüft Rechte und führt den Wechsel über die Admidio-Entities aus
   MembershipApi.php                Schnittstelle für Schnellwechsel und andere Plugins: Mitgliedsart und Zusatzbeiträge in einem Aufruf setzen
-  HistoryTableRenderer.php         Tabelle mit DataTables, Auswahl und JavaScript für den Wechsel
+  HistoryTableRenderer.php         Tabelle der Mitglieder-Historie mit DataTables (nur Ansicht)
   QuickChangeRenderer.php          Tabelle des Schnellwechsels mit Buttons und JavaScript
   Html.php                         Escaping für die HTML-Ausgabe
 tests/                             PHPUnit-Tests (laufen ohne Admidio)
