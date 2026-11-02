@@ -80,7 +80,7 @@ return [
     // Admidio) zählen nur im Jahr ihres Beginns und werden beim Wechsel nicht ins Folgejahr
     // übernommen. Eine Rolle darf bei mehreren Mitgliedsarten stehen.
     'optionalFeeRoles' => [
-        'A' => ['Bearbeitungsgebühr', 'Bootsbeitrag', 'Erstbesatz', 'Erstbesatz 200€', 'Erstbesatz 150€', 'Erstbesatz 100€', 'Erstbesatz 50€', 'passiv->aktiv Differenz'],
+        'A' => ['Bearbeitungsgebühr', 'Bootsbeitrag', 'Erstbesatz', 'Erstbesatz 200€', 'Erstbesatz 150€', 'Erstbesatz 100€', 'Erstbesatz 50€'],
         'F' => ['Förderbeitrag 100€', 'Förderbeitrag 50€', 'Förderbeitrag 25€', 'Förderbeitrag 20€', 'Förderbeitrag 12€'],
         'J' => ['2.Angel'],
     ],
