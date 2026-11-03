@@ -82,7 +82,8 @@ return [
     'optionalFeeRoles' => [
         'A' => ['Bearbeitungsgebühr', 'Bootsbeitrag', 'Erstbesatz', 'Erstbesatz 200€', 'Erstbesatz 150€', 'Erstbesatz 100€', 'Erstbesatz 50€'],
         'F' => ['Förderbeitrag 100€', 'Förderbeitrag 50€', 'Förderbeitrag 25€', 'Förderbeitrag 20€', 'Förderbeitrag 12€'],
-        'J' => ['2.Angel'],
+        'J' => ['2.Angel', 'Erstbesatz unbezahlt'],
+        'P' => ['Erstbesatz unbezahlt'],
     ],
 
     // Kacheln auf der Admidio-Übersichtsseite (overview.php, Einbindung siehe README): je Zeile die
