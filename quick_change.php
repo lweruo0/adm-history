@@ -115,7 +115,6 @@ try {
 
     $page = PagePresenter::withHtmlIDAndHeadline('adm_history_quick', $headline);
     $page->setContentFullWidth();
-    $page->addPageFunctionsMenuItem('adm_history_menu_history', 'Mitglieder-Historie', $pluginFolderUrl . '/index.php', 'bi-clock-history');
 
     $users = array_filter(
         $loader->loadAll(),

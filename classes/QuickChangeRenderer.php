@@ -38,6 +38,11 @@ final class QuickChangeRenderer
     {
         $e = Html::escape(...);
 
+        // Anzeige wie in der Mitglieder-Historie: Folgejahr links, aktuelles Jahr rechts
+        $currentYear = min($editableYears);
+        $displayYears = $editableYears;
+        rsort($displayYears);
+
         $page->addHtml('<div class="alert alert-secondary" role="alert"><i class="bi bi-info-circle"></i> '
             . 'Je Jahr ist die Mitgliedsart am 31.12. hervorgehoben. Ein Klick auf eine andere Mitgliedsart oder auf „Kündigung“ '
             . 'ändert die Mitgliedschaft ab dem 1. Januar des Jahres (nur die in mitgliedsarten.php erlaubten Wechsel sind aktiv). '
@@ -50,7 +55,7 @@ final class QuickChangeRenderer
             $name = trim($user['first_name'] . ' ' . $user['last_name']);
             $years = [];
             $cells = '';
-            foreach ($editableYears as $year) {
+            foreach ($displayYears as $year) {
                 $years[(string) $year] = $this->history->yearStateWithFees($user['periods'], $user['commonPeriods'], $user['feePeriods'], $year);
                 $cells .= '<td class="adm-quick-year" data-user="' . $e($uuid) . '" data-year="' . $year . '"></td>';
             }
@@ -69,9 +74,9 @@ final class QuickChangeRenderer
         }
 
         $headers = '<th>Vorname</th><th>Nachname</th>';
-        foreach ($editableYears as $index => $year) {
+        foreach ($displayYears as $year) {
             $headers .= '<th class="adm-quick-year">' . $year . ' <span class="fw-normal text-muted small">('
-                . ($index === 0 ? 'aktuelles Jahr' : 'Folgejahr') . ', ab 01.01.' . $year . ')</span></th>';
+                . ($year === $currentYear ? 'aktuelles Jahr' : 'Folgejahr') . ', ab 01.01.' . $year . ')</span></th>';
         }
 
         $page->addHtml('<style>

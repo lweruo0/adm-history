@@ -45,8 +45,8 @@ prüft Admidio je Rolle, ob der Benutzer ihr Mitglieder zuordnen darf.
 4. Speichern.
 
 Für den Schnellwechsel (siehe „Bedienung“) auf dieselbe Weise einen zweiten Menüpunkt anlegen, z. B.
-Name `Schnellwechsel`, URL `/adm_plugins/adm-history/quick_change.php`, Icon `bi-lightning`. Beide
-Seiten verlinken sich zusätzlich gegenseitig über das Funktionsmenü der Seite.
+Name `Schnellwechsel`, URL `/adm_plugins/adm-history/quick_change.php`, Icon `bi-lightning`. Die beiden
+Seiten verlinken sich nicht gegenseitig; aufgerufen werden sie über die Menüpunkte.
 
 ### Kacheln auf der Übersichtsseite einbinden
 
@@ -155,7 +155,7 @@ Damit bei ihnen keine leere Kachel stehen bleibt, die Blöcke in `overview.tpl` 
 - **Profil**: Vor- und Nachname verlinken auf das Profil der Person.
 - **Schnellwechsel** (`quick_change.php`, nur mit dem Recht zum Ändern): Tabelle aller Personen, die
   im aktuellen Jahr oder im Folgejahr mindestens einen Tag Mitglied sind (Rolle einer Mitgliedsart
-  oder gemeinsame Rolle), mit je einer Spalte für beide Jahre. Jede Spalte zeigt einen Button je
+  oder gemeinsame Rolle), mit je einer Spalte für beide Jahre (Folgejahr links, aktuelles Jahr rechts, wie in der Mitglieder-Historie). Jede Spalte zeigt einen Button je
   Mitgliedsart und einen Button „Kündigung“ im Stil des Admidio-Themes; die Mitgliedsart am 31.12. ist
   ausgewählt (dunkel hinterlegt, „Kündigung“, wenn die Person am 31.12. kein Mitglied ist). Nur die in
   `transitions` erlaubten Ziele sind aktiv. Ein Klick wechselt nach der Rückfrage ab dem 1. Januar des Jahres, nach den
