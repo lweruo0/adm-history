@@ -49,7 +49,7 @@ try {
 
     require_once(__DIR__ . '/autoload.php');
 
-    // Die Seite dient nur zum Ändern: Rechte wie beim Wechsel in index.php
+    // Die Seite dient nur zum Ändern: Recht „Rollen zuordnen“ (die Mitglieder-Historie in index.php ist nur Ansicht)
     $canEdit = $gValidLogin && ($gCurrentUser->isAdministrator() || $gCurrentUser->checkRolesRight('rol_assign_roles'));
     if (!$canEdit) {
         throw new Exception('SYS_NO_RIGHTS');
